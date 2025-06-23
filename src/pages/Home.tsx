@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Star, Users, Music, Crown, Sparkles } from "lucide-react";
 import LivePopup from "../components/common/LivePopup";
+import RoyalShishaLogo from "../assets/Logo.jpeg";
 
 const Home = () => {
   const features = [
@@ -43,7 +44,7 @@ const Home = () => {
       <LivePopup />
 
       {/* Hero Section */}
-      <section className="relative h-screen flex items-center justify-center overflow-hidden">
+      <section className="relative h-screen flex items-center justify-center overflow-hidden pt-20">
         {/* Background Video */}
         <video
           autoPlay
@@ -105,12 +106,22 @@ const Home = () => {
         {/* Content */}
         <div className="relative z-30 text-center text-white px-4 max-w-4xl mx-auto">
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: -30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="mb-4"
+            transition={{
+              duration: 5,
+              delay: 0.2,
+              repeat: Infinity,
+              repeatType: "mirror",
+              ease: "easeInOut",
+            }}
+            className="mb-8"
           >
-            <Crown className="w-16 h-16 mx-auto text-royal-gold mb-4" />
+            <img
+              src={RoyalShishaLogo}
+              alt="Royal Shisha Logo"
+              className="w-40 h-40 mx-auto rounded-full object-cover border-4 border-royal-gold royal-glow-more"
+            />
           </motion.div>
 
           <motion.h1
@@ -299,7 +310,7 @@ const Home = () => {
             className="relative h-96 rounded-xl overflow-hidden royal-shadow-gold"
           >
             <iframe
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2427.631589346643!2d13.38885!3d52.520008!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x47a851c85f543165%3A0x15126d408f06429!2sBrandenburg%20Gate!5e0!3m2!1sen!2sde!4v1622550978839!5m2!1sen!2sde"
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2662.651733614105!2d12.41793831564884!3d48.2119149792298!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x47747e0b6238b7b7%3A0x8d5ea32f79641775!2sStadtpl.+2%2C+84478+Waldkraiburg%2C+Germany!5e0!3m2!1sen!2sus!4v1622550978839!5m2!1sen!2sus"
               width="100%"
               height="100%"
               style={{ border: 0 }}

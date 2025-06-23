@@ -217,7 +217,12 @@ body {
 }
 
 .royal-glow {
-  animation: royal-glow 3s ease-in-out infinite;
+  box-shadow: 0 0 15px rgba(218, 165, 32, 0.7);
+}
+
+.royal-glow-more {
+  box-shadow: 0 0 25px rgba(218, 165, 32, 0.8), 0 0 50px rgba(218, 165, 32, 0.6);
+  animation: pulse-glow 4s infinite alternate;
 }
 
 @keyframes royal-shimmer {
@@ -357,7 +362,7 @@ body {
 
 /* Royal Hover Effects */
 .royal-hover-glow:hover {
-  box-shadow: 0 0 30px rgba(212, 175, 55, 0.4);
+  box-shadow: 0 0 20px rgba(218, 165, 32, 0.9);
 }
 
 .royal-hover-lift:hover {
@@ -374,4 +379,26 @@ body {
 ::-moz-selection {
   background-color: var(--royal-gold);
   color: var(--royal-charcoal);
+}
+
+/* Keyframes for animations */
+@keyframes pulse-glow {
+  from {
+    box-shadow: 0 0 25px rgba(218, 165, 32, 0.7),
+      0 0 50px rgba(218, 165, 32, 0.5);
+  }
+  to {
+    box-shadow: 0 0 35px rgba(218, 165, 32, 0.9),
+      0 0 60px rgba(218, 165, 32, 0.7);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
 }
