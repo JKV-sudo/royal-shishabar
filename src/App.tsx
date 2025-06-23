@@ -1,4 +1,3 @@
-import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { Toaster } from "react-hot-toast";
@@ -7,7 +6,6 @@ import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 import Header from "./components/layout/Header";
 import Footer from "./components/layout/Footer";
-import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 function App() {
   return (
