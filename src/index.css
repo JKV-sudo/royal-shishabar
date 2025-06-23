@@ -1,68 +1,377 @@
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap");
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  /* Royal Color Palette */
+  --royal-gold: #d4af37;
+  --royal-gold-light: #f4e4bc;
+  --royal-gold-dark: #b8860b;
+  --royal-purple: #4a148c;
+  --royal-purple-light: #7b1fa2;
+  --royal-purple-dark: #2e0b47;
+  --royal-burgundy: #8b0000;
+  --royal-burgundy-light: #b22222;
+  --royal-burgundy-dark: #5d0000;
+  --royal-navy: #1a237e;
+  --royal-navy-light: #3949ab;
+  --royal-navy-dark: #0d1421;
+  --royal-cream: #fdf6e3;
+  --royal-cream-light: #fff8dc;
+  --royal-cream-dark: #f5e6ca;
+  --royal-charcoal: #2c2c2c;
+  --royal-charcoal-light: #4a4a4a;
+  --royal-charcoal-dark: #1a1a1a;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
-a:hover {
-  color: #535bf2;
+
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
 }
 
 body {
-  margin: 0;
+  font-family: "Inter", sans-serif;
+  line-height: 1.6;
+  color: var(--royal-cream-light);
+  background: linear-gradient(
+    135deg,
+    var(--royal-purple-dark) 0%,
+    var(--royal-burgundy-dark) 50%,
+    var(--royal-navy-dark) 100%
+  );
+  background-attachment: fixed;
+  background-size: cover;
+}
+
+.App {
+  min-height: 100%;
   display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+  flex-direction: column;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+/* Royal Typography */
+.font-display {
+  font-family: "Playfair Display", serif;
+  font-weight: 700;
 }
 
-button {
+.font-body {
+  font-family: "Inter", sans-serif;
+}
+
+/* Royal Gradients */
+.royal-gradient {
+  background: linear-gradient(
+    135deg,
+    var(--royal-purple) 0%,
+    var(--royal-burgundy) 50%,
+    var(--royal-navy) 100%
+  );
+}
+
+.royal-gradient-gold {
+  background: linear-gradient(
+    135deg,
+    var(--royal-gold) 0%,
+    var(--royal-gold-light) 50%,
+    var(--royal-gold-dark) 100%
+  );
+}
+
+.royal-gradient-cream {
+  background: linear-gradient(
+    135deg,
+    var(--royal-cream) 0%,
+    var(--royal-cream-light) 50%,
+    var(--royal-cream-dark) 100%
+  );
+}
+
+/* Royal Buttons */
+.btn-royal-primary {
+  background: linear-gradient(
+    to right,
+    var(--royal-gold),
+    var(--royal-gold-dark)
+  );
+  color: var(--royal-charcoal);
+  font-weight: 600;
+  padding: 12px 24px;
   border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  border: 2px solid var(--royal-gold-dark);
+  transition: all 0.3s ease;
+  display: inline-block;
+  text-decoration: none;
   cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+.btn-royal-primary:hover {
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  transform: scale(1.05);
+}
+
+.btn-royal-secondary {
+  background: transparent;
+  color: var(--royal-gold);
+  border: 2px solid var(--royal-gold);
+  font-weight: 600;
+  padding: 12px 24px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  display: inline-block;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn-royal-secondary:hover {
+  background: var(--royal-gold);
+  color: var(--royal-charcoal);
+  transform: scale(1.05);
+}
+
+.btn-royal-outline {
+  background: transparent;
+  color: white;
+  border: 2px solid white;
+  font-weight: 600;
+  padding: 12px 24px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  display: inline-block;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn-royal-outline:hover {
+  background: white;
+  color: var(--royal-charcoal);
+  transform: scale(1.05);
+}
+
+/* Royal Cards */
+.royal-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--royal-gold-light);
+  transition: all 0.3s ease;
+}
+
+.royal-card:hover {
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  transform: scale(1.05);
+}
+
+.royal-card-luxury {
+  background: linear-gradient(to bottom right, var(--royal-cream), white);
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  border: 2px solid var(--royal-gold);
+  transition: all 0.3s ease;
+}
+
+.royal-card-luxury:hover {
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  transform: scale(1.05);
+}
+
+/* Royal Backgrounds */
+.royal-bg-pattern {
+  background-image: radial-gradient(
+      circle at 25% 25%,
+      var(--royal-gold-light) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 75% 75%,
+      var(--royal-purple-light) 0%,
+      transparent 50%
+    );
+  background-size: 100px 100px;
+  opacity: 0.1;
+}
+
+.royal-bg-texture {
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23D4AF37' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* Royal Animations */
+@keyframes royal-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
   }
-  a:hover {
-    color: #747bff;
+  50% {
+    box-shadow: 0 0 40px rgba(212, 175, 55, 0.6);
   }
-  button {
-    background-color: #f9f9f9;
+}
+
+.royal-glow {
+  animation: royal-glow 3s ease-in-out infinite;
+}
+
+@keyframes royal-shimmer {
+  0% {
+    background-position: -200% center;
   }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.royal-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--royal-gold),
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: royal-shimmer 2s infinite;
+}
+
+/* Royal Scrollbar */
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--royal-cream);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(var(--royal-gold), var(--royal-gold-dark));
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(var(--royal-gold-dark), var(--royal-gold));
+}
+
+/* Royal Focus States */
+.royal-focus:focus {
+  outline: 2px solid var(--royal-gold);
+  outline-offset: 2px;
+}
+
+/* Royal Text Shadows */
+.royal-text-shadow {
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.royal-text-glow {
+  text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+}
+
+/* Royal Borders */
+.royal-border {
+  border: 2px solid var(--royal-gold);
+}
+
+.royal-border-gradient {
+  border: 2px solid;
+  border-image: linear-gradient(45deg, var(--royal-gold), var(--royal-purple)) 1;
+}
+
+/* Royal Shadows */
+.royal-shadow {
+  box-shadow: 0 10px 30px rgba(212, 175, 55, 0.2);
+}
+
+.royal-shadow-dark {
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+/* Royal Glass Effect */
+.royal-glass {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+/* Royal Loading Animation */
+@keyframes royal-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.royal-spinner {
+  border: 3px solid var(--royal-cream);
+  border-top: 3px solid var(--royal-gold);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: royal-spin 1s linear infinite;
+}
+
+/* Royal Responsive Design */
+@media (max-width: 768px) {
+  .royal-gradient {
+    background: linear-gradient(
+      135deg,
+      var(--royal-purple) 0%,
+      var(--royal-burgundy) 100%
+    );
+  }
+
+  .royal-card {
+    border-radius: 8px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* Royal Utility Classes */
+.royal-text-primary {
+  color: var(--royal-gold);
+}
+
+.royal-text-secondary {
+  color: var(--royal-purple);
+}
+
+.royal-bg-primary {
+  background-color: var(--royal-gold);
+}
+
+.royal-bg-secondary {
+  background-color: var(--royal-purple);
+}
+
+.royal-bg-accent {
+  background-color: var(--royal-burgundy);
+}
+
+/* Royal Hover Effects */
+.royal-hover-glow:hover {
+  box-shadow: 0 0 30px rgba(212, 175, 55, 0.4);
+}
+
+.royal-hover-lift:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+/* Royal Selection */
+::selection {
+  background-color: var(--royal-gold);
+  color: var(--royal-charcoal);
+}
+
+::-moz-selection {
+  background-color: var(--royal-gold);
+  color: var(--royal-charcoal);
 }

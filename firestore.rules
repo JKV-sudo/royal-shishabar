@@ -1,0 +1,80 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can read and write their own data
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && resource.data.role == 'admin';
+    }
+
+    // Popups - anyone can read active popups, only admins can write
+    match /popups/{popupId} {
+      allow read: if true; // Anyone can read popups
+      allow write: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Menu items - anyone can read, only admins can write
+    match /menu/{itemId} {
+      allow read: if true;
+      allow write: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Reviews - anyone can read, authenticated users can write their own
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+      allow update, delete: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Events - anyone can read, only admins can write
+    match /events/{eventId} {
+      allow read: if true;
+      allow write: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Reservations - users can read/write their own, staff can read all
+    match /reservations/{reservationId} {
+      allow read, write: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'staff' ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+      allow write: if request.auth != null && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'staff' ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+    }
+
+    // Orders - users can read/write their own, staff can read all
+    match /orders/{orderId} {
+      allow read, write: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'staff' ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+      allow write: if request.auth != null && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'staff' ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+    }
+
+    // Spotify playlists - anyone can read, authenticated users can add songs
+    match /playlists/{playlistId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Song requests - anyone can read, authenticated users can create
+    match /songRequests/{requestId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && 
+        (resource.data.userId == request.auth.uid ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+    }
+  }
+} 
