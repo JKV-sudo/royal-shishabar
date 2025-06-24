@@ -2,6 +2,8 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Star, Users, Music, Crown, Sparkles } from "lucide-react";
 import LivePopup from "../components/common/LivePopup";
+import SocialBar from "../components/common/SocialBar";
+import CountUp from "../components/common/CountUp";
 import RoyalShishaLogo from "../assets/Logo.jpeg";
 
 const Home = () => {
@@ -33,15 +35,16 @@ const Home = () => {
   ];
 
   const stats = [
-    { number: "50+", label: "Premium-Aromen" },
-    { number: "1000+", label: "Königliche Gäste" },
-    { number: "5", label: "Sterne-Bewertung" },
-    { number: "24/7", label: "Königlicher Service" },
+    { number: 50, suffix: "+", label: "Premium-Aromen" },
+    { number: 1000, suffix: "+", label: "Königliche Gäste" },
+    { number: 5, suffix: "", label: "Sterne-Bewertung" },
+    { number: 24, suffix: "/7", label: "Königlicher Service" },
   ];
 
   return (
     <div className="min-h-screen">
       <LivePopup />
+      <SocialBar />
 
       {/* Hero Section */}
       <section className="relative h-screen flex items-center justify-center overflow-hidden pt-20">
@@ -237,7 +240,7 @@ const Home = () => {
                 className="text-center royal-glass rounded-xl p-6 royal-hover-glow"
               >
                 <div className="text-4xl md:text-5xl font-royal font-bold text-royal-gold mb-2 royal-text-glow">
-                  {stat.number}
+                  <CountUp end={stat.number} suffix={stat.suffix} />
                 </div>
                 <div className="text-royal-cream-light font-medium">
                   {stat.label}
