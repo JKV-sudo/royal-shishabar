@@ -14,14 +14,14 @@ const SimpleEventCard: React.FC<SimpleEventCardProps> = ({
   event,
   onUpdate,
 }) => {
-  const { user } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
   const [isLoading, setIsLoading] = React.useState(false);
   const [isAttending, setIsAttending] = React.useState(
-    event.attendees?.includes(user?.id || "") || false
+    (isAuthenticated && event.attendees?.includes(user?.id || "")) || false
   );
 
   const handleToggleAttendance = async () => {
-    if (!user) {
+    if (!isAuthenticated || !user) {
       toast.error("Please log in to attend events");
       return;
     }
@@ -183,32 +183,41 @@ const SimpleEventCard: React.FC<SimpleEventCardProps> = ({
           </div>
         )}
 
-        {/* Join Button */}
+        {/* Action Button */}
         <div className="flex justify-center">
-          <button
-            onClick={handleToggleAttendance}
-            disabled={isLoading || !event.isActive}
-            className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-              isAttending
-                ? "bg-red-500 text-white hover:bg-red-600"
-                : "bg-blue-500 text-white hover:bg-blue-600"
-            } ${
-              !event.isActive || isLoading
-                ? "opacity-50 cursor-not-allowed"
-                : ""
-            }`}
-          >
-            {isLoading ? (
-              <div className="flex items-center">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Loading...
-              </div>
-            ) : isAttending ? (
-              "Leave Event"
-            ) : (
-              "Join Event"
-            )}
-          </button>
+          {isAuthenticated ? (
+            <button
+              onClick={handleToggleAttendance}
+              disabled={isLoading || !event.isActive}
+              className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                isAttending
+                  ? "bg-red-500 text-white hover:bg-red-600"
+                  : "bg-blue-500 text-white hover:bg-blue-600"
+              } ${
+                !event.isActive || isLoading
+                  ? "opacity-50 cursor-not-allowed"
+                  : ""
+              }`}
+            >
+              {isLoading ? (
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Loading...
+                </div>
+              ) : isAttending ? (
+                "Leave Event"
+              ) : (
+                "Join Event"
+              )}
+            </button>
+          ) : (
+            <button
+              onClick={() => toast.error("Please log in to attend events")}
+              className="px-6 py-2 bg-gray-500 text-white rounded-lg font-medium hover:bg-gray-600 transition-colors"
+            >
+              Log in to Join
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -7,10 +7,10 @@ import {
   signInWithRedirect,
   getRedirectResult,
   OAuthProvider,
-  UserCredential,
+  User as FirebaseUser,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../config/firebase';
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { getFirebaseAuth, getFirestoreDB } from '../config/firebase';
 import { User } from '../stores/authStore';
 
 export interface SocialProvider {
@@ -63,6 +63,52 @@ export const SOCIAL_PROVIDERS: SocialProvider[] = [
 export const INSTAGRAM_PROVIDER = new OAuthProvider('instagram.com');
 
 export class SocialAuthService {
+  // Sign in with Google
+  static async signInWithGoogle(): Promise<User> {
+    try {
+      const auth = getFirebaseAuth();
+      const db = getFirestoreDB();
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const firebaseUser = result.user;
+
+      // Check if user exists in Firestore
+      const userData = await this.getUserData(firebaseUser.uid);
+
+      if (!userData) {
+        // Create new user document
+        const newUserData: Omit<User, 'id'> = {
+          email: firebaseUser.email!,
+          name: firebaseUser.displayName || 'User',
+          role: 'user',
+          avatar: firebaseUser.photoURL || undefined,
+          createdAt: new Date(),
+        };
+
+        await setDoc(doc(db, 'users', firebaseUser.uid), {
+          ...newUserData,
+          createdAt: serverTimestamp(),
+        });
+
+        return {
+          id: firebaseUser.uid,
+          ...newUserData,
+        };
+      }
+
+      return {
+        id: firebaseUser.uid,
+        email: firebaseUser.email!,
+        name: userData.name,
+        role: userData.role,
+        avatar: firebaseUser.photoURL || userData.avatar,
+        createdAt: userData.createdAt,
+      };
+    } catch (error: any) {
+      throw new Error(this.getErrorMessage(error.code));
+    }
+  }
+
   // Sign in with any social provider
   static async signInWithProvider(providerId: string): Promise<User> {
     try {
@@ -126,8 +172,8 @@ export class SocialAuthService {
   }
 
   // Handle social sign-in result
-  private static async handleSocialSignIn(userCredential: UserCredential, providerId: string): Promise<User> {
-    const firebaseUser = userCredential.user;
+  private static async handleSocialSignIn(userCredential: FirebaseUser, providerId: string): Promise<User> {
+    const firebaseUser = userCredential;
 
     // Check if user exists in Firestore
     const userData = await this.getUserData(firebaseUser.uid);
@@ -196,16 +242,40 @@ export class SocialAuthService {
   }
 
   // Get user data from Firestore
-  private static async getUserData(userId: string): Promise<Omit<User, 'id'> | null> {
+  static async getUserData(userId: string): Promise<Omit<User, 'id'> | null> {
     try {
+      const db = getFirestoreDB();
       const userDoc = await getDoc(doc(db, 'users', userId));
       if (userDoc.exists()) {
-        return userDoc.data() as Omit<User, 'id'>;
+        const data = userDoc.data();
+        return {
+          email: data.email,
+          name: data.name,
+          role: data.role,
+          avatar: data.avatar,
+          createdAt: data.createdAt.toDate(),
+        };
       }
       return null;
     } catch (error) {
       console.error('Error getting user data:', error);
       return null;
+    }
+  }
+
+  // Get error message from Firebase error code
+  private static getErrorMessage(code: string): string {
+    switch (code) {
+      case 'auth/popup-closed-by-user':
+        return 'Sign-in was cancelled.';
+      case 'auth/popup-blocked':
+        return 'Sign-in popup was blocked. Please allow popups for this site.';
+      case 'auth/cancelled-popup-request':
+        return 'Sign-in was cancelled.';
+      case 'auth/account-exists-with-different-credential':
+        return 'An account already exists with the same email address but different sign-in credentials.';
+      default:
+        return 'An error occurred during sign-in. Please try again.';
     }
   }
 

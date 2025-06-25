@@ -6,19 +6,27 @@
   "devCommand": "npm run dev",
   "headers": [
     {
-      "source": "/api/(.*)",
+      "source": "/(.*)",
       "headers": [
         {
-          "key": "Access-Control-Allow-Origin",
-          "value": "*"
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
         },
         {
-          "key": "Access-Control-Allow-Methods",
-          "value": "GET, POST, PUT, DELETE, OPTIONS"
+          "key": "X-Frame-Options",
+          "value": "DENY"
         },
         {
-          "key": "Access-Control-Allow-Headers",
-          "value": "Content-Type, Authorization"
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Viewport-Width",
+          "value": "device-width"
         }
       ]
     }
@@ -28,5 +36,10 @@
       "source": "/(.*)",
       "destination": "/index.html"
     }
-  ]
+  ],
+  "functions": {
+    "src/**/*.ts": {
+      "maxDuration": 10
+    }
+  }
 } 

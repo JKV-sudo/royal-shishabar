@@ -1,6 +1,7 @@
 import { initializeApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
+import { getStorage, FirebaseStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "demo-key",
@@ -15,6 +16,7 @@ const firebaseConfig = {
 let app: FirebaseApp | null = null;
 let authInstance: Auth | null = null;
 let dbInstance: Firestore | null = null;
+let storageInstance: FirebaseStorage | null = null;
 
 // Initialize Firebase app
 const initializeFirebase = (): FirebaseApp => {
@@ -53,7 +55,14 @@ export const getFirestoreDB = (): Firestore => {
   return dbInstance;
 };
 
-// Legacy exports for backward compatibility
-export const auth = getFirebaseAuth();
-export const db = getFirestoreDB();
+// Get Firebase Storage instance
+export const getFirebaseStorage = (): FirebaseStorage => {
+  if (!storageInstance) {
+    const firebaseApp = getFirebaseApp();
+    storageInstance = getStorage(firebaseApp);
+  }
+  return storageInstance;
+};
+
+// Default export
 export default getFirebaseApp();

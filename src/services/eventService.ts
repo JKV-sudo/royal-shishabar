@@ -14,16 +14,17 @@ import {
   serverTimestamp,
   QueryConstraint,
 } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { getFirestoreDB } from '../config/firebase';
 import { Event, EventFormData, EventFilters, EventStats } from '../types/event';
+import { PopupService } from './popupService';
 
 const EVENTS_COLLECTION = 'events';
 
 export class EventService {
-  // Get all events with optional filters
+  // Get all events with optional filters (public access)
   static async getEvents(filters?: EventFilters): Promise<Event[]> {
     try {
-      const constraints: QueryConstraint[] = [orderBy('date', 'desc')];
+      const constraints: QueryConstraint[] = [];
       
       if (filters?.isActive !== undefined) {
         constraints.push(where('isActive', '==', filters.isActive));
@@ -41,7 +42,12 @@ export class EventService {
         constraints.push(where('date', '<=', filters.dateTo));
       }
 
-      const q = query(collection(db, EVENTS_COLLECTION), ...constraints);
+      // Only add orderBy if we don't have any where clauses that would require composite indexes
+      if (constraints.length === 0) {
+        constraints.push(orderBy('date', 'desc'));
+      }
+
+      const q = query(collection(getFirestoreDB(), EVENTS_COLLECTION), ...constraints);
       const querySnapshot = await getDocs(q);
       
       const events: Event[] = [];
@@ -55,6 +61,11 @@ export class EventService {
           updatedAt: data.updatedAt.toDate(),
         } as Event);
       });
+
+      // Sort events by date (newest first) if no specific ordering was applied
+      if (constraints.length === 0 || !constraints.some(c => c.type === 'orderBy')) {
+        events.sort((a, b) => b.date.getTime() - a.date.getTime());
+      }
 
       // Apply search filter if provided
       if (filters?.search) {
@@ -73,10 +84,10 @@ export class EventService {
     }
   }
 
-  // Get a single event by ID
+  // Get a single event by ID (public access)
   static async getEventById(eventId: string): Promise<Event | null> {
     try {
-      const docRef = doc(db, EVENTS_COLLECTION, eventId);
+      const docRef = doc(getFirestoreDB(), EVENTS_COLLECTION, eventId);
       const docSnap = await getDoc(docRef);
       
       if (docSnap.exists()) {
@@ -110,8 +121,31 @@ export class EventService {
         attendees: [],
       };
 
-      const docRef = await addDoc(collection(db, EVENTS_COLLECTION), eventDoc);
-      return docRef.id;
+      const docRef = await addDoc(collection(getFirestoreDB(), EVENTS_COLLECTION), eventDoc);
+      const eventId = docRef.id;
+
+      // Create the full event object for popup notification
+      const fullEvent: Event = {
+        id: eventId,
+        ...eventData,
+        date: new Date(eventData.date),
+        isActive: true,
+        createdBy,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        attendees: [],
+      };
+
+      // Create popup notification for the new event
+      try {
+        await PopupService.createEventNotification(fullEvent);
+        console.log('Event notification popup created successfully');
+      } catch (popupError) {
+        console.error('Failed to create event notification popup:', popupError);
+        // Don't throw error here as the event was created successfully
+      }
+
+      return eventId;
     } catch (error) {
       console.error('Error creating event:', error);
       throw error;
@@ -121,7 +155,7 @@ export class EventService {
   // Update an event (admin only)
   static async updateEvent(eventId: string, eventData: Partial<EventFormData>): Promise<void> {
     try {
-      const docRef = doc(db, EVENTS_COLLECTION, eventId);
+      const docRef = doc(getFirestoreDB(), EVENTS_COLLECTION, eventId);
       const updateData: any = {
         ...eventData,
         updatedAt: serverTimestamp(),
@@ -141,7 +175,7 @@ export class EventService {
   // Delete an event (admin only)
   static async deleteEvent(eventId: string): Promise<void> {
     try {
-      const docRef = doc(db, EVENTS_COLLECTION, eventId);
+      const docRef = doc(getFirestoreDB(), EVENTS_COLLECTION, eventId);
       await deleteDoc(docRef);
     } catch (error) {
       console.error('Error deleting event:', error);
@@ -152,7 +186,7 @@ export class EventService {
   // Toggle event active status (admin only)
   static async toggleEventStatus(eventId: string, isActive: boolean): Promise<void> {
     try {
-      const docRef = doc(db, EVENTS_COLLECTION, eventId);
+      const docRef = doc(getFirestoreDB(), EVENTS_COLLECTION, eventId);
       await updateDoc(docRef, {
         isActive,
         updatedAt: serverTimestamp(),
@@ -163,13 +197,13 @@ export class EventService {
     }
   }
 
-  // Add/remove attendee from event
+  // Add/remove attendee from event (requires authentication)
   static async toggleAttendance(eventId: string, userId: string): Promise<void> {
     try {
       const event = await this.getEventById(eventId);
       if (!event) throw new Error('Event not found');
 
-      const docRef = doc(db, EVENTS_COLLECTION, eventId);
+      const docRef = doc(getFirestoreDB(), EVENTS_COLLECTION, eventId);
       const attendees = event.attendees || [];
       const isAttending = attendees.includes(userId);
 
@@ -194,16 +228,14 @@ export class EventService {
     }
   }
 
-  // Get upcoming events
+  // Get upcoming events (public access)
   static async getUpcomingEvents(limitCount: number = 5): Promise<Event[]> {
     try {
       const now = new Date();
       const q = query(
-        collection(db, EVENTS_COLLECTION),
+        collection(getFirestoreDB(), EVENTS_COLLECTION),
         where('date', '>=', now),
-        where('isActive', '==', true),
-        orderBy('date', 'asc'),
-        limit(limitCount)
+        where('isActive', '==', true)
       );
 
       const querySnapshot = await getDocs(q);
@@ -220,20 +252,21 @@ export class EventService {
         } as Event);
       });
 
-      return events;
+      // Sort by date ascending and limit
+      events.sort((a, b) => a.date.getTime() - b.date.getTime());
+      return events.slice(0, limitCount);
     } catch (error) {
       console.error('Error fetching upcoming events:', error);
       throw error;
     }
   }
 
-  // Get events created by a specific admin
+  // Get events created by a specific admin (admin only)
   static async getEventsByAdmin(adminId: string): Promise<Event[]> {
     try {
       const q = query(
-        collection(db, EVENTS_COLLECTION),
-        where('createdBy', '==', adminId),
-        orderBy('createdAt', 'desc')
+        collection(getFirestoreDB(), EVENTS_COLLECTION),
+        where('createdBy', '==', adminId)
       );
 
       const querySnapshot = await getDocs(q);
@@ -249,6 +282,9 @@ export class EventService {
           updatedAt: data.updatedAt.toDate(),
         } as Event);
       });
+
+      // Sort by creation date descending
+      events.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
       return events;
     } catch (error) {
@@ -257,7 +293,21 @@ export class EventService {
     }
   }
 
-  // Get event statistics
+  // Create upcoming event popup notification
+  static async createUpcomingEventNotification(): Promise<void> {
+    try {
+      const upcomingEvents = await this.getUpcomingEvents(3); // Get next 3 upcoming events
+      if (upcomingEvents.length > 0) {
+        await PopupService.createUpcomingEventPopup(upcomingEvents);
+        console.log('Upcoming event notification popup created successfully');
+      }
+    } catch (error) {
+      console.error('Failed to create upcoming event notification:', error);
+      // Don't throw error as this is a background operation
+    }
+  }
+
+  // Get event statistics (public access)
   static async getEventStats(): Promise<EventStats> {
     try {
       const allEvents = await this.getEvents();

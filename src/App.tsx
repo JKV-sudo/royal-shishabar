@@ -10,6 +10,8 @@ import Footer from "./components/layout/Footer";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import PerformanceMonitor from "./components/common/PerformanceMonitor";
 import AdminSetupButton from "./components/common/AdminSetupButton";
+import LivePopup from "./components/common/LivePopup";
+import "./utils/eventNotifications"; // Import to start notification manager
 
 function App() {
   return (
@@ -33,6 +35,7 @@ function App() {
             </Routes>
           </main>
           <Footer />
+          <LivePopup showEventNotifications={true} duration={8000} />
           <Toaster position="top-right" />
           <PerformanceMonitor />
           <AdminSetupButton />

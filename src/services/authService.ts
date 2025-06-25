@@ -7,9 +7,17 @@ import {
   sendPasswordResetEmail,
   GoogleAuthProvider,
   signInWithPopup,
+  User as FirebaseUser,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
-import { auth, db } from '../config/firebase';
+import {
+  doc,
+  setDoc,
+  getDoc,
+  updateDoc,
+  serverTimestamp,
+  Timestamp,
+} from 'firebase/firestore';
+import { getFirebaseAuth, getFirestoreDB } from '../config/firebase';
 import { User } from '../stores/authStore';
 
 export interface AuthError {
@@ -17,93 +25,73 @@ export interface AuthError {
   message: string;
 }
 
+export interface UserData {
+  id: string;
+  email: string;
+  name: string;
+  role: 'user' | 'admin';
+  avatar?: string;
+  createdAt: Date;
+}
+
 export class AuthService {
   // Sign in with email and password
-  static async signIn(email: string, password: string): Promise<User> {
+  static async signIn(email: string, password: string): Promise<FirebaseUser> {
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const firebaseUser = userCredential.user;
-      
-      // Get user data from Firestore
-      const userData = await this.getUserData(firebaseUser.uid);
-      
-      return {
-        id: firebaseUser.uid,
-        email: firebaseUser.email!,
-        name: userData?.name || firebaseUser.displayName || 'User',
-        role: userData?.role || 'customer',
-        avatar: firebaseUser.photoURL || undefined,
-        createdAt: userData?.createdAt || new Date(),
-      };
-    } catch (error: any) {
-      throw new Error(this.getErrorMessage(error.code));
+      const auth = getFirebaseAuth();
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      return result.user;
+    } catch (error) {
+      console.error('Error signing in:', error);
+      throw error;
     }
   }
 
   // Sign up with email and password
-  static async signUp(email: string, password: string, name: string): Promise<User> {
+  static async signUp(
+    email: string,
+    password: string,
+    name: string
+  ): Promise<FirebaseUser> {
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const firebaseUser = userCredential.user;
+      const auth = getFirebaseAuth();
+      const db = getFirestoreDB();
+      
+      const result = await createUserWithEmailAndPassword(auth, email, password);
+      const user = result.user;
 
-      // Update profile with name
-      await updateProfile(firebaseUser, { displayName: name });
+      // Update profile with display name
+      await updateProfile(user, {
+        displayName: name,
+      });
 
       // Create user document in Firestore
-      const userData: Omit<User, 'id'> = {
-        email,
+      const userData: Omit<UserData, 'id' | 'createdAt'> = {
+        email: user.email!,
         name,
-        role: 'customer',
-        createdAt: new Date(),
+        role: 'user',
+        avatar: user.photoURL || undefined,
       };
 
-      await setDoc(doc(db, 'users', firebaseUser.uid), userData);
-
-      return {
-        id: firebaseUser.uid,
+      await setDoc(doc(db, 'users', user.uid), {
         ...userData,
-      };
-    } catch (error: any) {
-      throw new Error(this.getErrorMessage(error.code));
+        createdAt: serverTimestamp(),
+      });
+
+      return user;
+    } catch (error) {
+      console.error('Error signing up:', error);
+      throw error;
     }
   }
 
   // Sign in with Google
-  static async signInWithGoogle(): Promise<User> {
+  static async signInWithGoogle(): Promise<FirebaseUser> {
     try {
       const provider = new GoogleAuthProvider();
-      const userCredential = await signInWithPopup(auth, provider);
-      const firebaseUser = userCredential.user;
-
-      // Check if user exists in Firestore
-      const userData = await this.getUserData(firebaseUser.uid);
-
-      if (!userData) {
-        // Create new user document
-        const newUserData: Omit<User, 'id'> = {
-          email: firebaseUser.email!,
-          name: firebaseUser.displayName || 'User',
-          role: 'customer',
-          avatar: firebaseUser.photoURL || undefined,
-          createdAt: new Date(),
-        };
-
-        await setDoc(doc(db, 'users', firebaseUser.uid), newUserData);
-
-        return {
-          id: firebaseUser.uid,
-          ...newUserData,
-        };
-      }
-
-      return {
-        id: firebaseUser.uid,
-        email: firebaseUser.email!,
-        name: userData.name,
-        role: userData.role,
-        avatar: firebaseUser.photoURL || userData.avatar,
-        createdAt: userData.createdAt,
-      };
+      const auth = getFirebaseAuth();
+      const result = await signInWithPopup(auth, provider);
+      return result.user;
     } catch (error: any) {
       throw new Error(this.getErrorMessage(error.code));
     }
@@ -112,15 +100,18 @@ export class AuthService {
   // Sign out
   static async signOut(): Promise<void> {
     try {
+      const auth = getFirebaseAuth();
       await signOut(auth);
-    } catch (error: any) {
-      throw new Error(this.getErrorMessage(error.code));
+    } catch (error) {
+      console.error('Error signing out:', error);
+      throw error;
     }
   }
 
   // Reset password
   static async resetPassword(email: string): Promise<void> {
     try {
+      const auth = getFirebaseAuth();
       await sendPasswordResetEmail(auth, email);
     } catch (error: any) {
       throw new Error(this.getErrorMessage(error.code));
@@ -128,16 +119,27 @@ export class AuthService {
   }
 
   // Get user data from Firestore
-  static async getUserData(userId: string): Promise<Omit<User, 'id'> | null> {
+  static async getUserData(userId: string): Promise<UserData | null> {
     try {
+      const db = getFirestoreDB();
       const userDoc = await getDoc(doc(db, 'users', userId));
+      
       if (userDoc.exists()) {
-        return userDoc.data() as Omit<User, 'id'>;
+        const data = userDoc.data();
+        return {
+          id: userDoc.id,
+          email: data.email,
+          name: data.name,
+          role: data.role,
+          avatar: data.avatar,
+          createdAt: data.createdAt.toDate(),
+        };
       }
+      
       return null;
     } catch (error) {
       console.error('Error getting user data:', error);
-      return null;
+      throw error;
     }
   }
 
@@ -145,6 +147,7 @@ export class AuthService {
   static async updateUserProfile(userId: string, updates: Partial<User>): Promise<void> {
     try {
       const { id, ...updateData } = updates;
+      const db = getFirestoreDB();
       await updateDoc(doc(db, 'users', userId), updateData);
     } catch (error: any) {
       throw new Error(this.getErrorMessage(error.code));
@@ -153,6 +156,7 @@ export class AuthService {
 
   // Listen to auth state changes
   static onAuthStateChanged(callback: (user: User | null) => void): () => void {
+    const auth = getFirebaseAuth();
     return onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         const userData = await this.getUserData(firebaseUser.uid);

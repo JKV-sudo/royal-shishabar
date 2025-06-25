@@ -1,8 +1,32 @@
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { getFirestoreDB } from '../config/firebase';
 import { User } from '../stores/authStore';
 
+export interface AdminStats {
+  totalUsers: number;
+  totalEvents: number;
+  activeEvents: number;
+  totalRevenue: number;
+}
+
 export class AdminService {
+  // Get admin statistics
+  static async getAdminStats(): Promise<AdminStats> {
+    try {
+      // This is a placeholder implementation
+      // In a real app, you would aggregate data from multiple collections
+      return {
+        totalUsers: 0,
+        totalEvents: 0,
+        activeEvents: 0,
+        totalRevenue: 0,
+      };
+    } catch (error) {
+      console.error('Error getting admin stats:', error);
+      throw error;
+    }
+  }
+
   // Promote a user to admin role (only existing admins can do this)
   static async promoteToAdmin(userId: string, promotedBy: string): Promise<void> {
     try {
@@ -13,6 +37,7 @@ export class AdminService {
       }
 
       // Update user role to admin
+      const db = getFirestoreDB();
       await updateDoc(doc(db, 'users', userId), {
         role: 'admin',
         promotedBy,
@@ -34,6 +59,7 @@ export class AdminService {
       }
 
       // Update user role to customer
+      const db = getFirestoreDB();
       await updateDoc(doc(db, 'users', userId), {
         role: 'customer',
         demotedBy,
@@ -48,6 +74,7 @@ export class AdminService {
   // Get user data
   static async getUserData(userId: string): Promise<Omit<User, 'id'> | null> {
     try {
+      const db = getFirestoreDB();
       const userDoc = await getDoc(doc(db, 'users', userId));
       if (userDoc.exists()) {
         return userDoc.data() as Omit<User, 'id'>;
@@ -80,6 +107,37 @@ export class AdminService {
     } catch (error) {
       console.error('Error getting all admins:', error);
       return [];
+    }
+  }
+
+  // Promote user to admin
+  static async promoteUserToAdmin(userId: string): Promise<void> {
+    try {
+      const db = getFirestoreDB();
+      const userRef = doc(db, 'users', userId);
+      await updateDoc(userRef, {
+        role: 'admin',
+      });
+    } catch (error) {
+      console.error('Error promoting user to admin:', error);
+      throw error;
+    }
+  }
+
+  // Get user role
+  static async getUserRole(userId: string): Promise<string | null> {
+    try {
+      const db = getFirestoreDB();
+      const userDoc = await getDoc(doc(db, 'users', userId));
+      
+      if (userDoc.exists()) {
+        return userDoc.data().role || 'user';
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error getting user role:', error);
+      throw error;
     }
   }
 } 
