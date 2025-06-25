@@ -704,3 +704,76 @@ body {
     color: var(--royal-cream-light);
   }
 }
+
+/* Video Carousel Styles */
+.video-carousel-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.video-carousel-video {
+  transition: opacity 0.5s ease-in-out;
+}
+
+.video-carousel-fallback {
+  transition: opacity 0.5s ease-in-out;
+}
+
+/* Video Controls */
+.video-control {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.video-control:hover {
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+}
+
+/* Video Indicators */
+.video-indicator {
+  transition: all 0.3s ease;
+}
+
+.video-indicator.active {
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.8);
+}
+
+/* Video Info Animation */
+.video-info-enter {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.video-info-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.5s, transform 0.5s;
+}
+
+.video-info-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.video-info-exit-active {
+  opacity: 0;
+  transform: translateY(-20px);
+  transition: opacity 0.5s, transform 0.5s;
+}
+
+/* Responsive Video Controls */
+@media (max-width: 768px) {
+  .video-control {
+    padding: 0.5rem;
+  }
+
+  .video-control svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .video-indicators {
+    bottom: 1rem;
+  }
+}

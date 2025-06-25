@@ -1,12 +1,93 @@
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
-import { Star, Users, Music, Crown, Sparkles, Calendar } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Star,
+  Users,
+  Music,
+  Crown,
+  Sparkles,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Play,
+  Pause,
+} from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import LivePopup from "../components/common/LivePopup";
 import SocialBar from "../components/common/SocialBar";
 import CountUp from "../components/common/CountUp";
 import RoyalShishaLogo from "../assets/Logo.jpeg";
+import { HERO_VIDEOS, VIDEO_SETTINGS } from "../config/videos";
 
 const Home = () => {
+  const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const isAutoPlay = VIDEO_SETTINGS.autoPlay;
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
+
+  // Auto-advance videos
+  useEffect(() => {
+    if (!isAutoPlay) return;
+
+    const interval = setInterval(() => {
+      setCurrentVideoIndex((prev) => (prev + 1) % HERO_VIDEOS.length);
+    }, VIDEO_SETTINGS.autoAdvanceInterval);
+
+    return () => clearInterval(interval);
+  }, [isAutoPlay]);
+
+  // Handle video play/pause
+  const togglePlay = () => {
+    const currentVideo = videoRefs.current[currentVideoIndex];
+    if (currentVideo) {
+      if (isPlaying) {
+        currentVideo.pause();
+      } else {
+        currentVideo.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  // Navigate to specific video
+  const goToVideo = (index: number) => {
+    setCurrentVideoIndex(index);
+    setIsPlaying(true);
+    const video = videoRefs.current[index];
+    if (video) {
+      video.currentTime = 0;
+      video.play();
+    }
+  };
+
+  // Previous video
+  const previousVideo = () => {
+    const newIndex =
+      currentVideoIndex === 0 ? HERO_VIDEOS.length - 1 : currentVideoIndex - 1;
+    goToVideo(newIndex);
+  };
+
+  // Next video
+  const nextVideo = () => {
+    const newIndex = (currentVideoIndex + 1) % HERO_VIDEOS.length;
+    goToVideo(newIndex);
+  };
+
+  // Handle video error and fallback to image
+  const handleVideoError = (index: number) => {
+    if (!VIDEO_SETTINGS.fallbackOnError) return;
+
+    const videoElement = videoRefs.current[index];
+    if (videoElement) {
+      videoElement.style.display = "none";
+      // Show fallback image
+      const fallbackImg = videoElement.nextElementSibling as HTMLImageElement;
+      if (fallbackImg) {
+        fallbackImg.style.display = "block";
+      }
+    }
+  };
+
   const features = [
     {
       icon: Crown,
@@ -46,22 +127,123 @@ const Home = () => {
       <LivePopup />
       <SocialBar />
 
-      {/* Hero Section */}
+      {/* Hero Section with Video Carousel */}
       <section className="relative h-screen flex items-center justify-center overflow-hidden pt-20">
-        {/* Background Video */}
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="absolute top-1/2 left-1/2 w-auto min-w-full min-h-full max-w-none transform -translate-x-1/2 -translate-y-1/2 z-0 object-cover"
-        >
-          {/* Video source removed due to 403 error - using background gradient instead */}
-          Your browser does not support the video tag.
-        </video>
+        {/* Video Carousel */}
+        <div className="absolute inset-0 z-0">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentVideoIndex}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1 }}
+              className="absolute inset-0"
+            >
+              <video
+                ref={(el) => (videoRefs.current[currentVideoIndex] = el)}
+                autoPlay
+                loop
+                muted
+                playsInline
+                onError={() => handleVideoError(currentVideoIndex)}
+                className="absolute top-1/2 left-1/2 w-auto min-w-full min-h-full max-w-none transform -translate-x-1/2 -translate-y-1/2 object-cover"
+              >
+                <source
+                  src={HERO_VIDEOS[currentVideoIndex].url}
+                  type="video/mp4"
+                />
+                Your browser does not support the video tag.
+              </video>
+
+              {/* Fallback Image */}
+              <img
+                src={HERO_VIDEOS[currentVideoIndex].fallback}
+                alt={HERO_VIDEOS[currentVideoIndex].title}
+                className="absolute top-1/2 left-1/2 w-auto min-w-full min-h-full max-w-none transform -translate-x-1/2 -translate-y-1/2 object-cover hidden"
+              />
+            </motion.div>
+          </AnimatePresence>
+        </div>
 
         {/* Video Overlay with Enhanced Gradient */}
         <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/40 to-royal-purple-dark/50 z-10"></div>
+
+        {/* Video Controls */}
+        <div className="absolute top-1/2 left-4 transform -translate-y-1/2 z-30">
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={previousVideo}
+            className="bg-royal-gold/20 backdrop-blur-sm text-white p-3 rounded-full border border-royal-gold/30 hover:bg-royal-gold/30 transition-all duration-300 royal-glow"
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </motion.button>
+        </div>
+
+        <div className="absolute top-1/2 right-4 transform -translate-y-1/2 z-30">
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={nextVideo}
+            className="bg-royal-gold/20 backdrop-blur-sm text-white p-3 rounded-full border border-royal-gold/30 hover:bg-royal-gold/30 transition-all duration-300 royal-glow"
+          >
+            <ChevronRight className="w-6 h-6" />
+          </motion.button>
+        </div>
+
+        {/* Play/Pause Control */}
+        <div className="absolute top-4 right-4 z-30">
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={togglePlay}
+            className="bg-royal-gold/20 backdrop-blur-sm text-white p-3 rounded-full border border-royal-gold/30 hover:bg-royal-gold/30 transition-all duration-300 royal-glow"
+          >
+            {isPlaying ? (
+              <Pause className="w-5 h-5" />
+            ) : (
+              <Play className="w-5 h-5" />
+            )}
+          </motion.button>
+        </div>
+
+        {/* Video Indicators */}
+        <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-30">
+          <div className="flex space-x-3">
+            {HERO_VIDEOS.map((_, index) => (
+              <motion.button
+                key={index}
+                whileHover={{ scale: 1.2 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => goToVideo(index)}
+                className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                  index === currentVideoIndex
+                    ? "bg-royal-gold royal-glow"
+                    : "bg-white/50 hover:bg-white/70"
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Video Info */}
+        <div className="absolute bottom-32 left-1/2 transform -translate-x-1/2 z-30 text-center">
+          <motion.div
+            key={currentVideoIndex}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="text-white"
+          >
+            <h3 className="text-2xl font-royal font-bold mb-2 royal-text-glow">
+              {HERO_VIDEOS[currentVideoIndex].title}
+            </h3>
+            <p className="text-royal-cream-light">
+              {HERO_VIDEOS[currentVideoIndex].description}
+            </p>
+          </motion.div>
+        </div>
 
         {/* Animated royal elements */}
         <div className="absolute inset-0 z-20">
