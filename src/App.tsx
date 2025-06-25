@@ -4,9 +4,12 @@ import { Toaster } from "react-hot-toast";
 import "./App.css";
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
+import Events from "./pages/Events";
 import Header from "./components/layout/Header";
 import Footer from "./components/layout/Footer";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import PerformanceMonitor from "./components/common/PerformanceMonitor";
+import AdminSetupButton from "./components/common/AdminSetupButton";
 
 function App() {
   return (
@@ -17,6 +20,7 @@ function App() {
           <main className="flex-grow">
             <Routes>
               <Route path="/" element={<Home />} />
+              <Route path="/events" element={<Events />} />
               <Route
                 path="/auth"
                 element={
@@ -25,11 +29,13 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-              {/* Add other routes here, e.g., Menu, Events, etc. */}
+              {/* Add other routes here, e.g., Menu, etc. */}
             </Routes>
           </main>
           <Footer />
           <Toaster position="top-right" />
+          <PerformanceMonitor />
+          <AdminSetupButton />
         </div>
       </AuthProvider>
     </Router>

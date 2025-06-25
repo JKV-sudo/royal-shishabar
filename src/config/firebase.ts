@@ -1,6 +1,6 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { initializeApp, FirebaseApp } from 'firebase/app';
+import { getAuth, Auth } from 'firebase/auth';
+import { getFirestore, Firestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "demo-key",
@@ -11,13 +11,49 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID || "demo-app-id"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Lazy initialization to improve performance
+let app: FirebaseApp | null = null;
+let authInstance: Auth | null = null;
+let dbInstance: Firestore | null = null;
 
-// Initialize Firebase Authentication and get a reference to the service
-export const auth = getAuth(app);
+// Initialize Firebase app
+const initializeFirebase = (): FirebaseApp => {
+  if (!app) {
+    try {
+      app = initializeApp(firebaseConfig);
+      console.log('Firebase initialized successfully');
+    } catch (error) {
+      console.error('Error initializing Firebase:', error);
+      throw error;
+    }
+  }
+  return app;
+};
 
-// Initialize Cloud Firestore and get a reference to the service
-export const db = getFirestore(app);
+// Get Firebase app instance
+export const getFirebaseApp = (): FirebaseApp => {
+  return initializeFirebase();
+};
 
-export default app;
+// Get Firebase Auth instance
+export const getFirebaseAuth = (): Auth => {
+  if (!authInstance) {
+    const firebaseApp = getFirebaseApp();
+    authInstance = getAuth(firebaseApp);
+  }
+  return authInstance;
+};
+
+// Get Firestore instance
+export const getFirestoreDB = (): Firestore => {
+  if (!dbInstance) {
+    const firebaseApp = getFirebaseApp();
+    dbInstance = getFirestore(firebaseApp);
+  }
+  return dbInstance;
+};
+
+// Legacy exports for backward compatibility
+export const auth = getFirebaseAuth();
+export const db = getFirestoreDB();
+export default getFirebaseApp();
