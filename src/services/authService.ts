@@ -15,7 +15,6 @@ import {
   getDoc,
   updateDoc,
   serverTimestamp,
-  Timestamp,
 } from 'firebase/firestore';
 import { getFirebaseAuth, getFirestoreDB } from '../config/firebase';
 import { User } from '../stores/authStore';

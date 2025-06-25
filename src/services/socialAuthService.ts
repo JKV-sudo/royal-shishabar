@@ -112,6 +112,7 @@ export class SocialAuthService {
   // Sign in with any social provider
   static async signInWithProvider(providerId: string): Promise<User> {
     try {
+      const auth = getFirebaseAuth();
       const socialProvider = SOCIAL_PROVIDERS.find(p => p.id === providerId);
       if (!socialProvider) {
         throw new Error('Unsupported provider');
@@ -122,7 +123,7 @@ export class SocialAuthService {
 
       // Sign in with popup
       const userCredential = await signInWithPopup(auth, socialProvider.provider);
-      return await this.handleSocialSignIn(userCredential, providerId);
+      return await this.handleSocialSignIn(userCredential.user, providerId);
     } catch (error: any) {
       throw new Error(this.getSocialErrorMessage(error.code, providerId));
     }
@@ -131,6 +132,7 @@ export class SocialAuthService {
   // Sign in with redirect (for mobile or when popup is blocked)
   static async signInWithRedirect(providerId: string): Promise<void> {
     try {
+      const auth = getFirebaseAuth();
       const socialProvider = SOCIAL_PROVIDERS.find(p => p.id === providerId);
       if (!socialProvider) {
         throw new Error('Unsupported provider');
@@ -146,9 +148,10 @@ export class SocialAuthService {
   // Handle redirect result (call this after page load)
   static async handleRedirectResult(): Promise<User | null> {
     try {
+      const auth = getFirebaseAuth();
       const result = await getRedirectResult(auth);
       if (result) {
-        return await this.handleSocialSignIn(result, 'redirect');
+        return await this.handleSocialSignIn(result.user, 'redirect');
       }
       return null;
     } catch (error: any) {
@@ -160,20 +163,21 @@ export class SocialAuthService {
   // Sign in with Instagram (custom implementation)
   static async signInWithInstagram(): Promise<User> {
     try {
+      const auth = getFirebaseAuth();
       // Configure Instagram provider
       INSTAGRAM_PROVIDER.addScope('user_profile');
       INSTAGRAM_PROVIDER.addScope('user_media');
 
       const userCredential = await signInWithPopup(auth, INSTAGRAM_PROVIDER);
-      return await this.handleSocialSignIn(userCredential, 'instagram');
+      return await this.handleSocialSignIn(userCredential.user, 'instagram');
     } catch (error: any) {
       throw new Error(this.getSocialErrorMessage(error.code, 'instagram'));
     }
   }
 
   // Handle social sign-in result
-  private static async handleSocialSignIn(userCredential: FirebaseUser, providerId: string): Promise<User> {
-    const firebaseUser = userCredential;
+  private static async handleSocialSignIn(firebaseUser: FirebaseUser, providerId: string): Promise<User> {
+    const db = getFirestoreDB();
 
     // Check if user exists in Firestore
     const userData = await this.getUserData(firebaseUser.uid);

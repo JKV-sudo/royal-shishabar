@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Crown, X, Calendar, Clock, MapPin, Users, Star } from "lucide-react";
+import { Crown, X, Calendar, Clock, MapPin, Star } from "lucide-react";
 import { PopupService, Popup } from "../../services/popupService";
 import { format } from "date-fns";
 
@@ -102,7 +102,7 @@ const LivePopup: React.FC<LivePopupProps> = ({
     const eventData = popup.eventData;
     if (!eventData) return null;
 
-    const eventDate = new Date(eventData.date);
+    const eventDate = eventData.date ? new Date(eventData.date) : new Date();
     const now = new Date();
     const timeUntilEvent = eventDate.getTime() - now.getTime();
     const daysUntilEvent = Math.ceil(timeUntilEvent / (1000 * 60 * 60 * 24));

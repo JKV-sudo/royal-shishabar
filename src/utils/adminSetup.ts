@@ -1,6 +1,5 @@
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { getFirestoreDB } from '../config/firebase';
-import { useAuthStore } from '../stores/authStore';
 
 // Function to promote current user to admin (for testing)
 export async function promoteCurrentUserToAdmin(): Promise<boolean> {

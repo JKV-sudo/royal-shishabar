@@ -1,4 +1,4 @@
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { getFirebaseStorage } from '../config/firebase';
 
 export interface UploadProgress {
@@ -94,10 +94,11 @@ export class ImageUploadService {
       const fileName = `${folder}/${timestamp}_${compressedFile.name}`;
       const storageRef = ref(this.storage, fileName);
 
-      // Upload file
+      // Upload the image
       const uploadTask = uploadBytesResumable(storageRef, compressedFile);
-
-      return new Promise((resolve, reject) => {
+      
+      // Return a promise that resolves with the download URL
+      return new Promise<string>((resolve, reject) => {
         uploadTask.on(
           'state_changed',
           (snapshot) => {
@@ -106,14 +107,15 @@ export class ImageUploadService {
           },
           (error) => {
             console.error('Upload error:', error);
-            reject(new Error('Failed to upload image'));
+            reject(error);
           },
           async () => {
             try {
               const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
               resolve(downloadURL);
             } catch (error) {
-              reject(new Error('Failed to get download URL'));
+              console.error('Error getting download URL:', error);
+              reject(error);
             }
           }
         );
@@ -127,11 +129,9 @@ export class ImageUploadService {
   // Delete image from Firebase Storage
   static async deleteImage(imageUrl: string): Promise<void> {
     try {
+      // Delete the image from storage
       const imageRef = ref(this.storage, imageUrl);
-      // Note: Firebase Storage doesn't have a direct delete method in the web SDK
-      // You would typically handle this on the server side
-      // For now, we'll just log the deletion
-      console.log('Image deletion requested for:', imageUrl);
+      await deleteObject(imageRef);
     } catch (error) {
       console.error('Error deleting image:', error);
       throw error;

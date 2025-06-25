@@ -38,8 +38,22 @@ export const useAuthStore = create<AuthState>((set) => ({
   signIn: async (email: string, password: string) => {
     set({ isLoading: true });
     try {
-      const user = await AuthService.signIn(email, password);
-      set({ user, isLoading: false, isAuthenticated: true });
+      const firebaseUser = await AuthService.signIn(email, password);
+      const userData = await AuthService.getUserData(firebaseUser.uid);
+      
+      if (userData) {
+        const user: User = {
+          id: firebaseUser.uid,
+          email: firebaseUser.email!,
+          name: userData.name,
+          role: userData.role,
+          avatar: firebaseUser.photoURL || userData.avatar,
+          createdAt: userData.createdAt,
+        };
+        set({ user, isLoading: false, isAuthenticated: true });
+      } else {
+        throw new Error('User data not found');
+      }
     } catch (error) {
       set({ isLoading: false });
       throw error;
@@ -49,8 +63,22 @@ export const useAuthStore = create<AuthState>((set) => ({
   signUp: async (email: string, password: string, name: string) => {
     set({ isLoading: true });
     try {
-      const user = await AuthService.signUp(email, password, name);
-      set({ user, isLoading: false, isAuthenticated: true });
+      const firebaseUser = await AuthService.signUp(email, password, name);
+      const userData = await AuthService.getUserData(firebaseUser.uid);
+      
+      if (userData) {
+        const user: User = {
+          id: firebaseUser.uid,
+          email: firebaseUser.email!,
+          name: userData.name,
+          role: userData.role,
+          avatar: firebaseUser.photoURL || userData.avatar,
+          createdAt: userData.createdAt,
+        };
+        set({ user, isLoading: false, isAuthenticated: true });
+      } else {
+        throw new Error('User data not found');
+      }
     } catch (error) {
       set({ isLoading: false });
       throw error;

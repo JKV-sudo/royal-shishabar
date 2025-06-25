@@ -286,7 +286,7 @@ const Auth = () => {
               </span>
             </div>
           </div>
-          <SocialLoginButtons onSocialLogin={handleSocialLogin} />
+          <SocialLoginButtons onSuccess={handleSocialLogin} />
         </motion.div>
       </motion.div>
     </div>
