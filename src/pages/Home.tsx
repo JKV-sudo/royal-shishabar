@@ -310,7 +310,7 @@ const Home = () => {
             className="relative h-96 rounded-xl overflow-hidden royal-shadow-gold"
           >
             <iframe
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2662.651733614105!2d12.41793831564884!3d48.2119149792298!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x47747e0b6238b7b7%3A0x8d5ea32f79641775!2sStadtpl.+2%2C+84478+Waldkraiburg%2C+Germany!5e0!3m2!1sen!2sus!4v1622550978839!5m2!1sen!2sus"
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2662.651733614105!2d12.41793831564884!3d48.2119149792298!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x47747e0b6238b7b7%3A0x8d5ea32f79641775!2sStadtpl.+2%2C+84478+Waldkraiburg%2C+Germany!5e0!3m2!1sen!2sus!4v1622550978839!5m2!1sen!2sus&t=h"
               width="100%"
               height="100%"
               style={{ border: 0 }}
