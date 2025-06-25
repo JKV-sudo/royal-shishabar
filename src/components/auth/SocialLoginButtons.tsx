@@ -7,7 +7,7 @@ import {
 import toast from "react-hot-toast";
 
 interface SocialLoginButtonsProps {
-  onSuccess?: () => void;
+  onSuccess?: (providerId: string) => void;
   onError?: (error: string) => void;
   variant?: "default" | "compact";
 }
@@ -17,13 +17,11 @@ const SocialLoginButtons = ({
   onError,
   variant = "default",
 }: SocialLoginButtonsProps) => {
-  const { signInWithSocial, isLoading } = useAuthStore();
+  const { isLoading } = useAuthStore();
 
   const handleSocialLogin = async (providerId: string) => {
     try {
-      await signInWithSocial(providerId);
-      toast.success(`Welcome! Signed in with ${providerId}`);
-      onSuccess?.();
+      onSuccess?.(providerId);
     } catch (error: any) {
       toast.error(error.message);
       onError?.(error.message);

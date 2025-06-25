@@ -6,6 +6,7 @@ import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 import Header from "./components/layout/Header";
 import Footer from "./components/layout/Footer";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 function App() {
   return (
@@ -16,7 +17,14 @@ function App() {
           <main className="flex-grow">
             <Routes>
               <Route path="/" element={<Home />} />
-              <Route path="/auth" element={<Auth />} />
+              <Route
+                path="/auth"
+                element={
+                  <ProtectedRoute requireAuth={false} redirectTo="/">
+                    <Auth />
+                  </ProtectedRoute>
+                }
+              />
               {/* Add other routes here, e.g., Menu, Events, etc. */}
             </Routes>
           </main>

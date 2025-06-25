@@ -56,10 +56,7 @@ const Home = () => {
           playsInline
           className="absolute top-1/2 left-1/2 w-auto min-w-full min-h-full max-w-none transform -translate-x-1/2 -translate-y-1/2 z-0 object-cover"
         >
-          <source
-            src="https://cdn.pixabay.com/vimeo/399883341/smoke-31358.mp4?width=1280&hash=d82479e0323cc5a146d299761567406a11229796"
-            type="video/mp4"
-          />
+          {/* Video source removed due to 403 error - using background gradient instead */}
           Your browser does not support the video tag.
         </video>
 
@@ -100,7 +97,7 @@ const Home = () => {
             transition={{
               duration: 4,
               repeat: Infinity,
-              ease: "ease-in-out",
+              ease: "easeInOut",
             }}
             className="absolute top-1/2 left-1/4 w-16 h-16 bg-royal-gold/30 rounded-full blur-lg"
           />

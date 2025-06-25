@@ -1,11 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import RoyalShishaLogo from "../../assets/Logo.jpeg";
-import { Menu, X } from "lucide-react";
+import { Menu, X, User, LogOut, Crown, ChevronDown } from "lucide-react";
+import { useAuthStore } from "../../stores/authStore";
+import toast from "react-hot-toast";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const { user, isAuthenticated, logout } = useAuthStore();
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   const navLinks = [
     { name: "Startseite", path: "/" },
@@ -13,6 +18,33 @@ const Header = () => {
     { name: "Events", path: "/events" },
     { name: "Kontakt", path: "/contact" },
   ];
+
+  // Close user menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        userMenuRef.current &&
+        !userMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast.success("Successfully logged out!");
+      setIsUserMenuOpen(false);
+    } catch (error: any) {
+      toast.error("Logout failed. Please try again.");
+    }
+  };
 
   return (
     <motion.header
@@ -47,12 +79,78 @@ const Header = () => {
             ))}
           </nav>
 
+          {/* Desktop User Menu */}
           <div className="hidden md:block">
-            <Link to="/auth" className="btn-royal-outline">
-              Royalty beitreten
-            </Link>
+            {isAuthenticated ? (
+              <div className="relative" ref={userMenuRef}>
+                <motion.button
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                  className="flex items-center space-x-2 bg-royal-gradient-gold text-royal-charcoal px-4 py-2 rounded-lg hover:shadow-lg transition-all duration-200 royal-hover-glow"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <Crown className="w-4 h-4" />
+                  <span className="font-medium">
+                    {user?.name || "Royal Member"}
+                  </span>
+                  <ChevronDown
+                    className={`w-4 h-4 transition-transform duration-200 ${
+                      isUserMenuOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </motion.button>
+
+                <AnimatePresence>
+                  {isUserMenuOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                      transition={{ duration: 0.2 }}
+                      className="absolute right-0 mt-2 w-64 bg-royal-charcoal-dark border border-royal-gold/30 rounded-lg shadow-xl royal-glow"
+                    >
+                      <div className="p-4">
+                        <div className="flex items-center space-x-3 mb-4 pb-4 border-b border-royal-gold/20">
+                          <div className="w-10 h-10 bg-royal-gradient-gold rounded-full flex items-center justify-center">
+                            <User className="w-5 h-5 text-royal-charcoal" />
+                          </div>
+                          <div>
+                            <p className="text-royal-cream font-medium">
+                              {user?.name}
+                            </p>
+                            <p className="text-royal-cream-light text-sm">
+                              {user?.email}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center space-x-2 text-royal-cream-light text-sm">
+                            <Crown className="w-4 h-4 text-royal-gold" />
+                            <span>Role: {user?.role}</span>
+                          </div>
+
+                          <button
+                            onClick={handleLogout}
+                            className="w-full flex items-center space-x-2 px-3 py-2 text-royal-cream hover:text-royal-gold hover:bg-royal-charcoal rounded-md transition-all duration-200"
+                          >
+                            <LogOut className="w-4 h-4" />
+                            <span>Logout</span>
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ) : (
+              <Link to="/auth" className="btn-royal-outline">
+                Royalty beitreten
+              </Link>
+            )}
           </div>
 
+          {/* Mobile Menu Button */}
           <div className="md:hidden">
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -88,13 +186,38 @@ const Header = () => {
                 {link.name}
               </NavLink>
             ))}
-            <Link
-              to="/auth"
-              onClick={() => setIsMenuOpen(false)}
-              className="block w-full text-center mt-4 px-3 py-2 rounded-md text-base font-medium text-royal-gold border border-royal-gold hover:bg-royal-gold hover:text-royal-charcoal-dark"
-            >
-              Royalty beitreten
-            </Link>
+
+            {isAuthenticated ? (
+              <div className="mt-4 space-y-2">
+                <div className="px-3 py-2 text-royal-cream-light text-sm border-b border-royal-gold/20">
+                  <div className="flex items-center justify-center space-x-2">
+                    <Crown className="w-4 h-4 text-royal-gold" />
+                    <span>{user?.name}</span>
+                  </div>
+                  <p className="text-xs mt-1">{user?.email}</p>
+                </div>
+                <button
+                  onClick={() => {
+                    handleLogout();
+                    setIsMenuOpen(false);
+                  }}
+                  className="block w-full text-center px-3 py-2 rounded-md text-base font-medium text-royal-gold border border-royal-gold hover:bg-royal-gold hover:text-royal-charcoal-dark transition-all duration-200"
+                >
+                  <div className="flex items-center justify-center space-x-2">
+                    <LogOut className="w-4 h-4" />
+                    <span>Logout</span>
+                  </div>
+                </button>
+              </div>
+            ) : (
+              <Link
+                to="/auth"
+                onClick={() => setIsMenuOpen(false)}
+                className="block w-full text-center mt-4 px-3 py-2 rounded-md text-base font-medium text-royal-gold border border-royal-gold hover:bg-royal-gold hover:text-royal-charcoal-dark"
+              >
+                Royalty beitreten
+              </Link>
+            )}
           </nav>
         </motion.div>
       )}
