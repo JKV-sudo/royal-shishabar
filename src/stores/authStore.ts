@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { AuthService } from '../services/authService';
 import { SocialAuthService } from '../services/socialAuthService';
 
-interface User {
+export interface User {
   id: string;
   email: string;
   name: string;
@@ -23,7 +23,7 @@ interface AuthState {
   resetPassword: (email: string) => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set, get) => ({
+export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isLoading: false,
   isAuthenticated: false,

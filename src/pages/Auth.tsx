@@ -134,7 +134,7 @@ const Auth = () => {
                 placeholder="Passwort"
                 value={formData.password}
                 onChange={handleInputChange}
-                required={mode !== "reset"}
+                required={mode === "login" || mode === "register"}
                 className="w-full pl-10 pr-12 py-3 bg-royal-charcoal/50 border border-royal-gold/30 rounded-lg text-royal-cream-light placeholder-royal-cream-light/60 focus:outline-none focus:border-royal-gold focus:ring-1 focus:ring-royal-gold transition-all duration-200"
               />
               <button

@@ -1,9 +1,6 @@
 import { motion } from "framer-motion";
 import { useAuthStore } from "../../stores/authStore";
-import {
-  SocialAuthService,
-  SOCIAL_PROVIDERS,
-} from "../../services/socialAuthService";
+import { SocialAuthService } from "../../services/socialAuthService";
 import toast from "react-hot-toast";
 
 interface SocialLoginButtonsProps {

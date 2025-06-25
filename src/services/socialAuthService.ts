@@ -128,10 +128,6 @@ export class SocialAuthService {
   // Handle social sign-in result
   private static async handleSocialSignIn(userCredential: UserCredential, providerId: string): Promise<User> {
     const firebaseUser = userCredential.user;
-    
-    // Get additional user info from provider
-    const additionalUserInfo = userCredential.additionalUserInfo;
-    const isNewUser = additionalUserInfo?.isNewUser;
 
     // Check if user exists in Firestore
     const userData = await this.getUserData(firebaseUser.uid);
