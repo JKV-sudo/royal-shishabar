@@ -118,25 +118,47 @@ body {
 /* Royal Buttons */
 .btn-royal-primary {
   background: linear-gradient(
-    to right,
-    var(--royal-gold),
-    var(--royal-gold-dark)
+    135deg,
+    var(--royal-gold) 0%,
+    var(--royal-gold-dark) 100%
   );
   color: var(--royal-charcoal);
   font-weight: 600;
   padding: 12px 24px;
   border-radius: 8px;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  border: 2px solid var(--royal-gold-dark);
+  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+  border: none;
   transition: all 0.3s ease;
   display: inline-block;
   text-decoration: none;
   cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-royal-primary::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transition: left 0.5s;
+}
+
+.btn-royal-primary:hover::before {
+  left: 100%;
 }
 
 .btn-royal-primary:hover {
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-  transform: scale(1.05);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(212, 175, 55, 0.5);
 }
 
 .btn-royal-secondary {
@@ -192,16 +214,33 @@ body {
 }
 
 .royal-card-luxury {
-  background: linear-gradient(to bottom right, var(--royal-cream), white);
-  border-radius: 12px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, var(--royal-cream) 0%, white 100%);
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
   border: 2px solid var(--royal-gold);
-  transition: all 0.3s ease;
+  transition: all 0.4s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.royal-card-luxury::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--royal-gold),
+    var(--royal-purple),
+    var(--royal-burgundy)
+  );
 }
 
 .royal-card-luxury:hover {
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  transform: scale(1.05);
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.2);
 }
 
 /* Royal Backgrounds */
@@ -240,8 +279,7 @@ body {
 }
 
 .royal-glow-more {
-  box-shadow: 0 0 25px rgba(218, 165, 32, 0.8), 0 0 50px rgba(218, 165, 32, 0.6);
-  animation: pulse-glow 4s infinite alternate;
+  box-shadow: 0 0 30px rgba(212, 175, 55, 0.8);
 }
 
 @keyframes royal-shimmer {
@@ -294,7 +332,7 @@ body {
 }
 
 .royal-text-glow {
-  text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+  text-shadow: 0 0 10px rgba(212, 175, 55, 0.8);
 }
 
 /* Royal Borders */
@@ -316,11 +354,15 @@ body {
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
 }
 
+.royal-shadow-gold {
+  box-shadow: 0 10px 30px rgba(212, 175, 55, 0.4);
+}
+
 /* Royal Glass Effect */
 .royal-glass {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(44, 44, 44, 0.8);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(212, 175, 55, 0.2);
+  border: 1px solid rgba(212, 175, 55, 0.3);
 }
 
 /* Royal Loading Animation */
@@ -356,6 +398,20 @@ body {
     border-radius: 8px;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   }
+
+  .royal-card-luxury {
+    border-radius: 12px;
+    margin: 0 1rem;
+  }
+
+  .btn-royal-primary {
+    padding: 10px 20px;
+    font-size: 14px;
+  }
+
+  .royal-text-glow {
+    text-shadow: 0 0 5px rgba(212, 175, 55, 0.6);
+  }
 }
 
 /* Royal Utility Classes */
@@ -381,12 +437,12 @@ body {
 
 /* Royal Hover Effects */
 .royal-hover-glow:hover {
-  box-shadow: 0 0 20px rgba(218, 165, 32, 0.9);
+  box-shadow: 0 0 25px rgba(212, 175, 55, 0.6);
 }
 
 .royal-hover-lift:hover {
   transform: translateY(-5px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
 }
 
 /* Royal Selection */
@@ -464,5 +520,187 @@ body {
   .royal-card {
     margin: 0.5rem;
     padding: 1rem;
+  }
+}
+
+/* Missing CSS Classes */
+.royal-gradient-top-border {
+  border-top: 3px solid;
+  border-image: linear-gradient(
+      90deg,
+      var(--royal-gold),
+      var(--royal-purple),
+      var(--royal-burgundy)
+    )
+    1;
+}
+
+/* Enhanced Button Styles */
+.btn-royal-primary {
+  background: linear-gradient(
+    135deg,
+    var(--royal-gold) 0%,
+    var(--royal-gold-dark) 100%
+  );
+  color: var(--royal-charcoal);
+  font-weight: 600;
+  padding: 12px 24px;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+  border: none;
+  transition: all 0.3s ease;
+  display: inline-block;
+  text-decoration: none;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-royal-primary::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transition: left 0.5s;
+}
+
+.btn-royal-primary:hover::before {
+  left: 100%;
+}
+
+.btn-royal-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(212, 175, 55, 0.5);
+}
+
+/* Enhanced Card Styles */
+.royal-card-luxury {
+  background: linear-gradient(135deg, var(--royal-cream) 0%, white 100%);
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  border: 2px solid var(--royal-gold);
+  transition: all 0.4s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.royal-card-luxury::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--royal-gold),
+    var(--royal-purple),
+    var(--royal-burgundy)
+  );
+}
+
+.royal-card-luxury:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.2);
+}
+
+/* Loading States */
+.royal-loading {
+  background: linear-gradient(
+    90deg,
+    var(--royal-charcoal) 25%,
+    var(--royal-charcoal-light) 50%,
+    var(--royal-charcoal) 75%
+  );
+  background-size: 200% 100%;
+  animation: royal-shimmer 1.5s infinite;
+}
+
+/* Enhanced Form Styles */
+.royal-input {
+  background: rgba(44, 44, 44, 0.8);
+  border: 2px solid rgba(212, 175, 55, 0.3);
+  border-radius: 8px;
+  color: var(--royal-cream-light);
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.royal-input:focus {
+  border-color: var(--royal-gold);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+  outline: none;
+}
+
+/* Enhanced Navigation */
+.royal-nav-link {
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.royal-nav-link::after {
+  content: "";
+  position: absolute;
+  bottom: -5px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--royal-gold);
+  transition: width 0.3s ease;
+}
+
+.royal-nav-link:hover::after,
+.royal-nav-link.active::after {
+  width: 100%;
+}
+
+/* Enhanced Animations */
+@keyframes royal-float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.royal-float {
+  animation: royal-float 3s ease-in-out infinite;
+}
+
+@keyframes royal-pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(212, 175, 55, 0.6);
+    transform: scale(1.05);
+  }
+}
+
+.royal-pulse-glow {
+  animation: royal-pulse-glow 2s ease-in-out infinite;
+}
+
+/* Dark mode enhancements */
+@media (prefers-color-scheme: dark) {
+  .royal-card-luxury {
+    background: linear-gradient(
+      135deg,
+      var(--royal-charcoal-light) 0%,
+      var(--royal-charcoal) 100%
+    );
+    color: var(--royal-cream-light);
   }
 }

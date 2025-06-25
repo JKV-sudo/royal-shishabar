@@ -5,6 +5,7 @@ import "./App.css";
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 import Events from "./pages/Events";
+import Menu from "./pages/Menu";
 import Header from "./components/layout/Header";
 import Footer from "./components/layout/Footer";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
@@ -22,6 +23,7 @@ function App() {
           <main className="flex-grow">
             <Routes>
               <Route path="/" element={<Home />} />
+              <Route path="/menu" element={<Menu />} />
               <Route path="/events" element={<Events />} />
               <Route
                 path="/auth"
@@ -31,7 +33,7 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-              {/* Add other routes here, e.g., Menu, etc. */}
+              {/* Add other routes here, e.g., Contact, etc. */}
             </Routes>
           </main>
           <Footer />

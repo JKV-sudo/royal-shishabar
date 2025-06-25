@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Mail, Lock, User, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, User, Eye, EyeOff, Crown } from "lucide-react";
 import SocialLoginButtons from "../components/auth/SocialLoginButtons";
 import { useAuthStore } from "../stores/authStore";
 import toast from "react-hot-toast";
@@ -74,29 +74,81 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center pt-20 px-4 bg-royal-gradient">
+    <div className="min-h-screen flex items-center justify-center pt-20 px-4 bg-royal-gradient relative overflow-hidden">
+      {/* Background decorative elements */}
+      <div className="absolute inset-0 z-0">
+        <motion.div
+          animate={{
+            scale: [1, 1.2, 1],
+            rotate: [0, 180, 360],
+          }}
+          transition={{
+            duration: 20,
+            repeat: Infinity,
+            ease: "linear",
+          }}
+          className="absolute top-20 left-20 w-32 h-32 bg-royal-gold/10 rounded-full blur-xl"
+        />
+        <motion.div
+          animate={{
+            scale: [1.2, 1, 1.2],
+            rotate: [360, 180, 0],
+          }}
+          transition={{
+            duration: 15,
+            repeat: Infinity,
+            ease: "linear",
+          }}
+          className="absolute bottom-20 right-20 w-40 h-40 bg-royal-purple/10 rounded-full blur-xl"
+        />
+      </div>
+
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="max-w-md w-full royal-glass p-8 rounded-xl royal-glow"
+        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        className="relative z-10 max-w-md w-full royal-glass p-8 rounded-2xl royal-glow border border-royal-gold/30"
       >
         <div className="text-center mb-8">
-          <h2 className="text-3xl font-royal font-bold text-royal-gold mb-2 royal-text-glow">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="w-16 h-16 bg-royal-gradient-gold rounded-full flex items-center justify-center mx-auto mb-4 royal-glow"
+          >
+            <Crown className="w-8 h-8 text-royal-charcoal" />
+          </motion.div>
+          <motion.h2
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="text-3xl font-royal font-bold text-royal-gold mb-2 royal-text-glow"
+          >
             {mode === "login" && "Willkommen zurück"}
             {mode === "register" && "Royalty beitreten"}
             {mode === "reset" && "Passwort zurücksetzen"}
-          </h2>
-          <p className="text-royal-cream-light">
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+            className="text-royal-cream-light"
+          >
             {mode === "login" &&
               "Melden Sie sich an, um exklusive Vorteile zu erhalten."}
             {mode === "register" && "Erstellen Sie Ihr königliches Konto."}
             {mode === "reset" && "Geben Sie Ihre E-Mail-Adresse ein."}
-          </p>
+          </motion.p>
         </div>
 
         {/* Email/Password Form */}
-        <form onSubmit={handleSubmit} className="space-y-4 mb-6">
+        <motion.form
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.5 }}
+          onSubmit={handleSubmit}
+          className="space-y-4 mb-6"
+        >
           {mode === "register" && (
             <div className="relative">
               <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-royal-cream-light w-5 h-5" />
@@ -107,7 +159,7 @@ const Auth = () => {
                 value={formData.name}
                 onChange={handleInputChange}
                 required={mode === "register"}
-                className="w-full pl-10 pr-4 py-3 bg-royal-charcoal/50 border border-royal-gold/30 rounded-lg text-royal-cream-light placeholder-royal-cream-light/60 focus:outline-none focus:border-royal-gold focus:ring-1 focus:ring-royal-gold transition-all duration-200"
+                className="royal-input w-full pl-10 pr-4 py-3 text-royal-cream-light placeholder-royal-cream-light/60"
               />
             </div>
           )}
@@ -121,7 +173,7 @@ const Auth = () => {
               value={formData.email}
               onChange={handleInputChange}
               required
-              className="w-full pl-10 pr-4 py-3 bg-royal-charcoal/50 border border-royal-gold/30 rounded-lg text-royal-cream-light placeholder-royal-cream-light/60 focus:outline-none focus:border-royal-gold focus:ring-1 focus:ring-royal-gold transition-all duration-200"
+              className="royal-input w-full pl-10 pr-4 py-3 text-royal-cream-light placeholder-royal-cream-light/60"
             />
           </div>
 
@@ -135,7 +187,7 @@ const Auth = () => {
                 value={formData.password}
                 onChange={handleInputChange}
                 required={mode === "login" || mode === "register"}
-                className="w-full pl-10 pr-12 py-3 bg-royal-charcoal/50 border border-royal-gold/30 rounded-lg text-royal-cream-light placeholder-royal-cream-light/60 focus:outline-none focus:border-royal-gold focus:ring-1 focus:ring-royal-gold transition-all duration-200"
+                className="royal-input w-full pl-10 pr-12 py-3 text-royal-cream-light placeholder-royal-cream-light/60"
               />
               <button
                 type="button"
@@ -156,7 +208,7 @@ const Auth = () => {
             disabled={isLoading}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="w-full bg-royal-gradient-gold text-royal-charcoal font-semibold py-3 px-6 rounded-lg hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed royal-hover-glow"
+            className="w-full bg-royal-gradient-gold text-royal-charcoal font-semibold py-3 px-6 rounded-lg hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed royal-hover-glow relative overflow-hidden"
           >
             {isLoading ? (
               <div className="flex items-center justify-center">
@@ -173,15 +225,20 @@ const Auth = () => {
               </>
             )}
           </motion.button>
-        </form>
+        </motion.form>
 
         {/* Mode Switcher */}
-        <div className="text-center mb-6">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.6 }}
+          className="text-center mb-6"
+        >
           {mode === "login" && (
             <div className="space-y-2">
               <button
                 onClick={() => setMode("register")}
-                className="text-royal-gold hover:text-royal-gold-light transition-colors duration-200 text-sm"
+                className="text-royal-gold hover:text-royal-gold-light transition-colors duration-200 text-sm font-medium"
               >
                 Noch kein Konto? Registrieren
               </button>
@@ -198,7 +255,7 @@ const Auth = () => {
           {mode === "register" && (
             <button
               onClick={() => setMode("login")}
-              className="text-royal-gold hover:text-royal-gold-light transition-colors duration-200 text-sm"
+              className="text-royal-gold hover:text-royal-gold-light transition-colors duration-200 text-sm font-medium"
             >
               Bereits ein Konto? Anmelden
             </button>
@@ -206,29 +263,31 @@ const Auth = () => {
           {mode === "reset" && (
             <button
               onClick={() => setMode("login")}
-              className="text-royal-gold hover:text-royal-gold-light transition-colors duration-200 text-sm"
+              className="text-royal-gold hover:text-royal-gold-light transition-colors duration-200 text-sm font-medium"
             >
               Zurück zur Anmeldung
             </button>
           )}
-        </div>
+        </motion.div>
 
         {/* Social Login */}
-        {mode === "login" && (
-          <div>
-            <div className="relative mb-4">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-royal-gold/30" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-royal-charcoal text-royal-cream-light">
-                  oder
-                </span>
-              </div>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.7 }}
+        >
+          <div className="relative mb-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-royal-gold/30"></div>
             </div>
-            <SocialLoginButtons onSuccess={handleSocialLogin} />
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-royal-charcoal-dark text-royal-cream-light">
+                Oder fortfahren mit
+              </span>
+            </div>
           </div>
-        )}
+          <SocialLoginButtons onSocialLogin={handleSocialLogin} />
+        </motion.div>
       </motion.div>
     </div>
   );

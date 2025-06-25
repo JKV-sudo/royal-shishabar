@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Star, Users, Music, Crown, Sparkles } from "lucide-react";
+import { Star, Users, Music, Crown, Sparkles, Calendar } from "lucide-react";
 import LivePopup from "../components/common/LivePopup";
 import SocialBar from "../components/common/SocialBar";
 import CountUp from "../components/common/CountUp";
@@ -60,8 +60,8 @@ const Home = () => {
           Your browser does not support the video tag.
         </video>
 
-        {/* Video Overlay */}
-        <div className="absolute inset-0 bg-black/50 z-10"></div>
+        {/* Video Overlay with Enhanced Gradient */}
+        <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/40 to-royal-purple-dark/50 z-10"></div>
 
         {/* Animated royal elements */}
         <div className="absolute inset-0 z-20">
@@ -75,7 +75,7 @@ const Home = () => {
               repeat: Infinity,
               ease: "linear",
             }}
-            className="absolute top-20 left-20 w-32 h-32 bg-royal-gold/20 rounded-full blur-xl royal-glow"
+            className="absolute top-20 left-20 w-32 h-32 bg-royal-gold/20 rounded-full blur-xl royal-pulse-glow"
           />
           <motion.div
             animate={{
@@ -87,7 +87,7 @@ const Home = () => {
               repeat: Infinity,
               ease: "linear",
             }}
-            className="absolute bottom-20 right-20 w-40 h-40 bg-royal-purple/20 rounded-full blur-xl royal-glow"
+            className="absolute bottom-20 right-20 w-40 h-40 bg-royal-purple/20 rounded-full blur-xl royal-pulse-glow"
           />
           <motion.div
             animate={{
@@ -99,7 +99,20 @@ const Home = () => {
               repeat: Infinity,
               ease: "easeInOut",
             }}
-            className="absolute top-1/2 left-1/4 w-16 h-16 bg-royal-gold/30 rounded-full blur-lg"
+            className="absolute top-1/2 left-1/4 w-16 h-16 bg-royal-gold/30 rounded-full blur-lg royal-float"
+          />
+          <motion.div
+            animate={{
+              y: [0, 15, 0],
+              opacity: [0.3, 0.8, 0.3],
+            }}
+            transition={{
+              duration: 6,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 2,
+            }}
+            className="absolute top-1/3 right-1/4 w-12 h-12 bg-royal-burgundy/25 rounded-full blur-md royal-float"
           />
         </div>
 
@@ -109,25 +122,36 @@ const Home = () => {
             initial={{ opacity: 0, y: -30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{
-              duration: 5,
+              duration: 1,
               delay: 0.2,
-              repeat: Infinity,
-              repeatType: "mirror",
-              ease: "easeInOut",
             }}
             className="mb-8"
           >
-            <img
-              src={RoyalShishaLogo}
-              alt="Royal Shisha Logo"
-              className="w-40 h-40 mx-auto rounded-full object-cover border-4 border-royal-gold royal-glow-more"
-            />
+            <div className="relative">
+              <img
+                src={RoyalShishaLogo}
+                alt="Royal Shisha Logo"
+                className="w-40 h-40 mx-auto rounded-full object-cover border-4 border-royal-gold royal-glow-more shadow-2xl"
+              />
+              <motion.div
+                animate={{
+                  scale: [1, 1.1, 1],
+                  opacity: [0.5, 1, 0.5],
+                }}
+                transition={{
+                  duration: 3,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+                className="absolute inset-0 rounded-full border-4 border-royal-gold/30 royal-glow"
+              />
+            </div>
           </motion.div>
 
           <motion.h1
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
             className="text-5xl md:text-7xl font-royal font-bold mb-6 royal-text-glow"
           >
             Royal Shisha
@@ -136,8 +160,8 @@ const Home = () => {
           <motion.p
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="text-xl md:text-2xl mb-8 text-royal-cream-light"
+            transition={{ duration: 0.8, delay: 0.6 }}
+            className="text-xl md:text-2xl mb-8 text-royal-cream-light font-light"
           >
             Erleben Sie die ultimative königliche Hookah-Lounge in Deutschland
           </motion.p>
@@ -145,20 +169,21 @@ const Home = () => {
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.6 }}
+            transition={{ duration: 0.8, delay: 0.8 }}
             className="flex flex-col sm:flex-row gap-4 justify-center"
           >
             <Link
               to="/menu"
-              className="btn-royal-primary text-lg px-8 py-4 royal-hover-glow"
+              className="btn-royal-primary text-lg px-8 py-4 royal-hover-glow group"
             >
-              <Sparkles className="w-5 h-5 inline mr-2" />
+              <Sparkles className="w-5 h-5 inline mr-2 group-hover:animate-spin transition-transform duration-300" />
               Menü erkunden
             </Link>
             <Link
               to="/events"
-              className="btn-royal-outline text-lg px-8 py-4 royal-hover-glow"
+              className="btn-royal-outline text-lg px-8 py-4 royal-hover-glow group"
             >
+              <Calendar className="w-5 h-5 inline mr-2 group-hover:scale-110 transition-transform duration-300" />
               Events ansehen
             </Link>
           </motion.div>
@@ -170,8 +195,12 @@ const Home = () => {
           transition={{ duration: 2, repeat: Infinity }}
           className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-30"
         >
-          <div className="w-6 h-10 border-2 border-royal-gold rounded-full flex justify-center royal-glow">
-            <div className="w-1 h-3 bg-royal-gold rounded-full mt-2"></div>
+          <div className="w-6 h-10 border-2 border-royal-gold rounded-full flex justify-center royal-glow cursor-pointer">
+            <motion.div
+              animate={{ y: [0, 12, 0] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="w-1 h-3 bg-royal-gold rounded-full mt-2"
+            />
           </div>
         </motion.div>
       </section>

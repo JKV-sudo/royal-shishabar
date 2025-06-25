@@ -40,3 +40,59 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Performance Optimizations */
+.royal-optimized {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .royal-float,
+  .royal-pulse-glow,
+  .royal-spin {
+    animation: none !important;
+  }
+}
+
+/* Loading skeleton */
+.royal-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--royal-charcoal) 25%,
+    var(--royal-charcoal-light) 50%,
+    var(--royal-charcoal) 75%
+  );
+  background-size: 200% 100%;
+  animation: royal-shimmer 1.5s infinite;
+}
+
+/* Enhanced focus states for accessibility */
+.royal-focus-visible:focus-visible {
+  outline: 2px solid var(--royal-gold);
+  outline-offset: 2px;
+}
+
+/* Print styles */
+@media print {
+  .royal-gradient,
+  .royal-glow,
+  .royal-hover-glow {
+    background: none !important;
+    box-shadow: none !important;
+  }
+
+  .royal-text-glow {
+    text-shadow: none !important;
+  }
+}

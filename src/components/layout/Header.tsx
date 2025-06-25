@@ -69,7 +69,7 @@ const Header = () => {
                 key={link.name}
                 to={link.path}
                 className={({ isActive }) =>
-                  `text-lg font-medium transition-colors duration-200 hover:text-royal-gold ${
+                  `royal-nav-link text-lg font-medium transition-all duration-300 hover:text-royal-gold ${
                     isActive ? "text-royal-gold" : "text-royal-cream"
                   }`
                 }
@@ -163,64 +163,74 @@ const Header = () => {
       </div>
 
       {/* Mobile Menu */}
-      {isMenuOpen && (
-        <motion.div
-          className="md:hidden bg-royal-charcoal-dark"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-        >
-          <nav className="px-2 pt-2 pb-4 space-y-1 sm:px-3 text-center">
-            {navLinks.map((link) => (
-              <NavLink
-                key={link.name}
-                to={link.path}
-                onClick={() => setIsMenuOpen(false)}
-                className={({ isActive }) =>
-                  `block px-3 py-2 rounded-md text-base font-medium transition-colors duration-200 hover:text-royal-gold hover:bg-royal-charcoal ${
-                    isActive
-                      ? "text-royal-gold bg-royal-charcoal"
-                      : "text-royal-cream"
-                  }`
-                }
-              >
-                {link.name}
-              </NavLink>
-            ))}
-
-            {isAuthenticated ? (
-              <div className="mt-4 space-y-2">
-                <div className="px-3 py-2 text-royal-cream-light text-sm border-b border-royal-gold/20">
-                  <div className="flex items-center justify-center space-x-2">
-                    <Crown className="w-4 h-4 text-royal-gold" />
-                    <span>{user?.name}</span>
-                  </div>
-                  <p className="text-xs mt-1">{user?.email}</p>
-                </div>
-                <button
-                  onClick={() => {
-                    handleLogout();
-                    setIsMenuOpen(false);
-                  }}
-                  className="block w-full text-center px-3 py-2 rounded-md text-base font-medium text-royal-gold border border-royal-gold hover:bg-royal-gold hover:text-royal-charcoal-dark transition-all duration-200"
+      <AnimatePresence>
+        {isMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="md:hidden bg-royal-charcoal-dark border-t border-royal-gold/20"
+          >
+            <nav className="px-4 py-6 space-y-3">
+              {navLinks.map((link) => (
+                <NavLink
+                  key={link.name}
+                  to={link.path}
+                  onClick={() => setIsMenuOpen(false)}
+                  className={({ isActive }) =>
+                    `block px-4 py-3 rounded-lg text-base font-medium transition-all duration-200 hover:text-royal-gold hover:bg-royal-charcoal ${
+                      isActive
+                        ? "text-royal-gold bg-royal-charcoal royal-glow"
+                        : "text-royal-cream"
+                    }`
+                  }
                 >
-                  <div className="flex items-center justify-center space-x-2">
+                  {link.name}
+                </NavLink>
+              ))}
+
+              {isAuthenticated ? (
+                <div className="mt-6 pt-6 border-t border-royal-gold/20 space-y-3">
+                  <div className="px-4 py-3 text-royal-cream-light text-sm royal-glass rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-royal-gradient-gold rounded-full flex items-center justify-center">
+                        <Crown className="w-4 h-4 text-royal-charcoal" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-royal-cream">
+                          {user?.name}
+                        </p>
+                        <p className="text-xs">{user?.email}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      setIsMenuOpen(false);
+                    }}
+                    className="w-full flex items-center space-x-3 px-4 py-3 text-royal-cream hover:text-royal-gold hover:bg-royal-charcoal rounded-lg transition-all duration-200"
+                  >
                     <LogOut className="w-4 h-4" />
                     <span>Logout</span>
-                  </div>
-                </button>
-              </div>
-            ) : (
-              <Link
-                to="/auth"
-                onClick={() => setIsMenuOpen(false)}
-                className="block w-full text-center mt-4 px-3 py-2 rounded-md text-base font-medium text-royal-gold border border-royal-gold hover:bg-royal-gold hover:text-royal-charcoal-dark"
-              >
-                Royalty beitreten
-              </Link>
-            )}
-          </nav>
-        </motion.div>
-      )}
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-6 pt-6 border-t border-royal-gold/20">
+                  <Link
+                    to="/auth"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="block w-full text-center bg-royal-gradient-gold text-royal-charcoal font-semibold py-3 px-6 rounded-lg hover:shadow-lg transition-all duration-200 royal-hover-glow"
+                  >
+                    Royalty beitreten
+                  </Link>
+                </div>
+              )}
+            </nav>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.header>
   );
 };
