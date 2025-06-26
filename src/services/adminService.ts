@@ -1,4 +1,4 @@
-import { db } from "../config/firebase";
+import { getFirestoreDB } from "../config/firebase";
 import {
   collection,
   getDocs,
@@ -37,6 +37,7 @@ export class AdminService {
   // Get comprehensive admin statistics
   static async getAdminStats(): Promise<AdminStats> {
     try {
+      const db = getFirestoreDB();
       // Get user statistics
       const usersRef = collection(db, "users");
       const totalUsersSnapshot = await getCountFromServer(usersRef);
@@ -72,6 +73,7 @@ export class AdminService {
   // Get all users with pagination
   static async getUsers(limitCount: number = 50): Promise<User[]> {
     try {
+      const db = getFirestoreDB();
       const usersRef = collection(db, "users");
       const q = query(usersRef, orderBy("createdAt", "desc"), limit(limitCount));
       const snapshot = await getDocs(q);
@@ -91,6 +93,7 @@ export class AdminService {
   // Update user role
   static async updateUserRole(userId: string, newRole: "customer" | "staff" | "admin"): Promise<void> {
     try {
+      const db = getFirestoreDB();
       const userRef = doc(db, "users", userId);
       await updateDoc(userRef, {
         role: newRole,
@@ -105,6 +108,7 @@ export class AdminService {
   // Toggle user active status
   static async toggleUserStatus(userId: string, isActive: boolean): Promise<void> {
     try {
+      const db = getFirestoreDB();
       const userRef = doc(db, "users", userId);
       await updateDoc(userRef, {
         isActive,
@@ -119,6 +123,7 @@ export class AdminService {
   // Delete user
   static async deleteUser(userId: string): Promise<void> {
     try {
+      const db = getFirestoreDB();
       const userRef = doc(db, "users", userId);
       await deleteDoc(userRef);
     } catch (error) {
@@ -194,6 +199,7 @@ export class AdminService {
   // Update system settings
   static async updateSystemSettings(settings: any): Promise<void> {
     try {
+      const db = getFirestoreDB();
       const settingsRef = doc(db, "system", "settings");
       await updateDoc(settingsRef, {
         ...settings,
@@ -211,7 +217,7 @@ export class AdminService {
       // Mock system settings
       return {
         siteName: "Royal Shisha Bar",
-        contactEmail: "admin@royalshishabar.com",
+        contactEmail: "Royal.Waldkraiburg@gmail.com",
         maintenanceMode: false,
         twoFactorAuth: true,
         emailNotifications: true,
@@ -227,6 +233,7 @@ export class AdminService {
   // Export data (for backup purposes)
   static async exportData(collectionName: string): Promise<any[]> {
     try {
+      const db = getFirestoreDB();
       const collectionRef = collection(db, collectionName);
       const snapshot = await getDocs(collectionRef);
       
@@ -243,6 +250,7 @@ export class AdminService {
   // Bulk operations
   static async bulkUpdateEvents(updates: { id: string; updates: Partial<Event> }[]): Promise<void> {
     try {
+      const db = getFirestoreDB();
       const batch = writeBatch(db);
       
       updates.forEach(({ id, updates }) => {

@@ -16,13 +16,13 @@ const SocialBar = () => {
 
     {
       icon: Mail,
-      href: "mailto:info@royalshisha.de",
+      href: "mailto:Royal.Waldkraiburg@gmail.com",
       label: "Email",
       color: "bg-royal-gold",
     },
     {
       icon: Phone,
-      href: "tel:+49123456789",
+      href: "tel:+4915781413767",
       label: "Phone",
       color: "bg-green-600",
     },

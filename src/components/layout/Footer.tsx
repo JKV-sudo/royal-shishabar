@@ -2,16 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import RoyalShishaLogo from "../../assets/Logo.jpeg";
-import {
-  Facebook,
-  Instagram,
-  Twitter,
-  Youtube,
-  Crown,
-  MapPin,
-  Mail,
-  Phone,
-} from "lucide-react";
+import { Instagram, Crown, MapPin, Mail, Phone } from "lucide-react";
 
 const Footer = () => {
   const navLinks = [
@@ -22,10 +13,11 @@ const Footer = () => {
   ];
 
   const socialLinks = [
-    { icon: Instagram, href: "#", label: "Instagram" },
-    { icon: Facebook, href: "#", label: "Facebook" },
-    { icon: Twitter, href: "#", label: "Twitter" },
-    { icon: Youtube, href: "#", label: "YouTube" },
+    {
+      icon: Instagram,
+      href: "https://www.instagram.com/royal.waldkraiburg/",
+      label: "Instagram",
+    },
   ];
 
   return (
@@ -154,19 +146,19 @@ const Footer = () => {
               <div className="flex items-center space-x-2">
                 <Mail className="w-4 h-4 text-royal-gold flex-shrink-0" />
                 <a
-                  href="mailto:info@royalshisha.de"
-                  className="hover:text-royal-gold transition-colors duration-200"
+                  href="mailto:Royal.Waldkraiburg@gmail.com"
+                  className="text-royal-cream-light hover:text-royal-gold transition-colors"
                 >
-                  info@royalshisha.de
+                  Royal.Waldkraiburg@gmail.com
                 </a>
               </div>
               <div className="flex items-center space-x-2">
                 <Phone className="w-4 h-4 text-royal-gold flex-shrink-0" />
                 <a
-                  href="tel:+49123456789"
-                  className="hover:text-royal-gold transition-colors duration-200"
+                  href="tel:+4915781413767"
+                  className="text-royal-cream-light hover:text-royal-gold transition-colors"
                 >
-                  +49 123 456789
+                  +49 15781413767
                 </a>
               </div>
             </address>

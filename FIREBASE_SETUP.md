@@ -182,7 +182,7 @@
    // In Firebase Console → Firestore
    // Create a document in 'users' collection
    {
-     "email": "admin@royalshisha.de",
+     "email": "Royal.Waldkraiburg@gmail.com",
      "name": "Admin User",
      "role": "admin",
      "createdAt": Timestamp.now()

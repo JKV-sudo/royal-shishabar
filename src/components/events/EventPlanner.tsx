@@ -34,37 +34,6 @@ const EventPlanner: React.FC = () => {
     "Other",
   ];
 
-  useEffect(() => {
-    loadEvents();
-    loadStats();
-  }, []);
-
-  useEffect(() => {
-    applyFilters();
-  }, [applyFilters]);
-
-  const loadEvents = async () => {
-    try {
-      setIsLoading(true);
-      const eventsData = await EventService.getEvents();
-      setEvents(eventsData);
-    } catch (error) {
-      toast.error("Failed to load events");
-      console.error("Error loading events:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loadStats = async () => {
-    try {
-      const statsData = await EventService.getEventStats();
-      setStats(statsData);
-    } catch (error) {
-      console.error("Error loading stats:", error);
-    }
-  };
-
   const applyFilters = useCallback(() => {
     let filtered = [...events];
 
@@ -104,6 +73,37 @@ const EventPlanner: React.FC = () => {
 
     setFilteredEvents(filtered);
   }, [events, filters]);
+
+  useEffect(() => {
+    loadEvents();
+    loadStats();
+  }, []);
+
+  useEffect(() => {
+    applyFilters();
+  }, [applyFilters]);
+
+  const loadEvents = async () => {
+    try {
+      setIsLoading(true);
+      const eventsData = await EventService.getEvents();
+      setEvents(eventsData);
+    } catch (error) {
+      toast.error("Failed to load events");
+      console.error("Error loading events:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadStats = async () => {
+    try {
+      const statsData = await EventService.getEventStats();
+      setStats(statsData);
+    } catch (error) {
+      console.error("Error loading stats:", error);
+    }
+  };
 
   const handleCreateEvent = () => {
     setEditingEvent(null);

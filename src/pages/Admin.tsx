@@ -4,6 +4,10 @@ import { Event } from "../types/event";
 import { EventService } from "../services/eventService";
 import { toast } from "react-hot-toast";
 import LoadingSpinner from "../components/common/LoadingSpinner";
+import MenuManagement from "../components/admin/MenuManagement";
+import SpecialOfferManagement from "../components/admin/SpecialOfferManagement";
+import OrderManagement from "../components/admin/OrderManagement";
+import PopupManagement from "../components/admin/PopupManagement";
 import { motion } from "framer-motion";
 import {
   Users,
@@ -22,6 +26,10 @@ import {
   Eye,
   EyeOff,
   RefreshCw,
+  Utensils,
+  Tag,
+  Package,
+  MessageSquare,
 } from "lucide-react";
 
 interface AdminStats {
@@ -131,6 +139,10 @@ const Admin: React.FC = () => {
     { id: "users", name: "Users", icon: Users },
     { id: "analytics", name: "Analytics", icon: TrendingUp },
     { id: "settings", name: "Settings", icon: Settings },
+    { id: "menu", name: "Menu", icon: Utensils },
+    { id: "special-offers", name: "Sonderangebote", icon: Tag },
+    { id: "orders", name: "Orders", icon: Package },
+    { id: "popup", name: "Popups", icon: MessageSquare },
   ];
 
   const renderDashboard = () => (
@@ -464,7 +476,7 @@ const Admin: React.FC = () => {
               </label>
               <input
                 type="email"
-                defaultValue="admin@royalshishabar.com"
+                defaultValue="Royal.Waldkraiburg@gmail.com"
                 className="w-full px-3 py-2 bg-royal-charcoal-dark border border-royal-gold/30 rounded-lg text-royal-cream focus:outline-none focus:border-royal-gold"
               />
             </div>
@@ -507,6 +519,12 @@ const Admin: React.FC = () => {
     </div>
   );
 
+  const renderMenu = () => (
+    <div className="space-y-6">
+      <MenuManagement />
+    </div>
+  );
+
   const renderContent = () => {
     switch (activeTab) {
       case "dashboard":
@@ -519,6 +537,14 @@ const Admin: React.FC = () => {
         return renderAnalytics();
       case "settings":
         return renderSettings();
+      case "menu":
+        return renderMenu();
+      case "special-offers":
+        return <SpecialOfferManagement />;
+      case "orders":
+        return <OrderManagement />;
+      case "popup":
+        return <PopupManagement />;
       default:
         return renderDashboard();
     }

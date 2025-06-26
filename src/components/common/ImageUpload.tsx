@@ -8,6 +8,7 @@ interface ImageUploadProps {
   onError?: (error: string) => void;
   className?: string;
   disabled?: boolean;
+  folder?: string;
 }
 
 const ImageUpload: React.FC<ImageUploadProps> = ({
@@ -16,6 +17,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   onError,
   className = "",
   disabled = false,
+  folder = "events",
 }) => {
   const [isDragOver, setIsDragOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -31,7 +33,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
 
         const downloadURL = await ImageUploadService.uploadImage(
           file,
-          "events",
+          folder,
           (progress) => setUploadProgress(progress)
         );
 
@@ -48,7 +50,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
         setUploadProgress(0);
       }
     },
-    [onChange, onError]
+    [onChange, onError, folder]
   );
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -128,7 +130,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
           <div className="relative">
             <img
               src={previewUrl}
-              alt="Event preview"
+              alt="Preview"
               className="w-full h-48 object-cover rounded-lg"
             />
             {!disabled && (
@@ -182,7 +184,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
                 </div>
                 <div className="space-y-2">
                   <p className="text-lg font-medium text-gray-900">
-                    Upload Event Image
+                    Upload Image
                   </p>
                   <p className="text-sm text-gray-500">
                     Drag and drop an image here, or click to select

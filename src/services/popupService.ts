@@ -427,4 +427,107 @@ export class PopupService {
 
     return this.createPopup(samplePopup);
   }
+
+  // Get all popups for admin panel
+  static async getPopups(): Promise<Popup[]> {
+    try {
+      const q = query(
+        collection(getFirestoreDB(), this.COLLECTION),
+        orderBy('createdAt', 'desc')
+      );
+
+      const querySnapshot = await getDocs(q);
+      const popups: Popup[] = [];
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        
+        // Convert eventData.date if it exists and is a Firestore Timestamp
+        let eventData = data.eventData;
+        if (eventData && eventData.date && typeof eventData.date === 'object' && 'toDate' in eventData.date) {
+          eventData = {
+            ...eventData,
+            date: eventData.date.toDate()
+          };
+        }
+
+        popups.push({
+          id: doc.id,
+          type: data.type,
+          title: data.title,
+          message: data.message,
+          isActive: data.isActive,
+          createdAt: data.createdAt.toDate(),
+          updatedAt: data.updatedAt.toDate(),
+          createdBy: data.createdBy,
+          expiresAt: data.expiresAt?.toDate(),
+          priority: data.priority || 0,
+          eventId: data.eventId,
+          eventData: eventData,
+        });
+      });
+
+      return popups;
+    } catch (error) {
+      console.error('Error getting all popups:', error);
+      throw new Error('Failed to get popups');
+    }
+  }
+
+  // Create popup with admin panel data structure
+  static async createAdminPopup(popupData: {
+    title: string;
+    message: string;
+    type: 'info' | 'promo' | 'event' | 'announcement';
+    startDate: string;
+    endDate: string;
+    displayDuration: number;
+    targetAudience: 'all' | 'new' | 'returning';
+    priority: number;
+  }): Promise<string> {
+    try {
+      const popup: Omit<Popup, 'id' | 'createdAt' | 'updatedAt'> = {
+        type: popupData.type === 'promo' ? 'promotion' : popupData.type === 'announcement' ? 'alert' : popupData.type,
+        title: popupData.title,
+        message: popupData.message,
+        isActive: true,
+        createdBy: 'admin',
+        priority: popupData.priority,
+        expiresAt: new Date(popupData.endDate),
+      };
+
+      return this.createPopup(popup);
+    } catch (error) {
+      console.error('Error creating admin popup:', error);
+      throw new Error('Failed to create popup');
+    }
+  }
+
+  // Update popup with admin panel data structure
+  static async updateAdminPopup(id: string, popupData: {
+    title: string;
+    message: string;
+    type: 'info' | 'promo' | 'event' | 'announcement';
+    startDate: string;
+    endDate: string;
+    displayDuration: number;
+    targetAudience: 'all' | 'new' | 'returning';
+    priority: number;
+  }): Promise<void> {
+    try {
+      const updates: Partial<Popup> = {
+        type: popupData.type === 'promo' ? 'promotion' : popupData.type === 'announcement' ? 'alert' : popupData.type,
+        title: popupData.title,
+        message: popupData.message,
+        priority: popupData.priority,
+        expiresAt: new Date(popupData.endDate),
+        updatedAt: new Date(),
+      };
+
+      await this.updatePopup(id, updates);
+    } catch (error) {
+      console.error('Error updating admin popup:', error);
+      throw new Error('Failed to update popup');
+    }
+  }
 } 

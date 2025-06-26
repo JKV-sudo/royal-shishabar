@@ -21,6 +21,13 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
+    // Special offers - anyone can read active offers, only admins can write
+    match /specialOffers/{offerId} {
+      allow read: if true;
+      allow write: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
     // Reviews - anyone can read, authenticated users can write their own
     match /reviews/{reviewId} {
       allow read: if true;
@@ -46,11 +53,7 @@ service cloud.firestore {
       allow read, write: if request.auth != null && 
         resource.data.userId == request.auth.uid;
       allow read: if request.auth != null && 
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'staff' ||
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
-      allow write: if request.auth != null && 
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'staff' ||
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     // Orders - users can read/write their own, staff can read all

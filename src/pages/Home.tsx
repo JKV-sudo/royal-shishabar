@@ -1,24 +1,24 @@
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
+  Crown,
   Star,
   Users,
-  Music,
-  Crown,
-  Sparkles,
-  Calendar,
+  Clock,
+  Phone,
+  Mail,
   ChevronLeft,
   ChevronRight,
   Play,
   Pause,
+  Music,
 } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
-import LivePopup from "../components/common/LivePopup";
 import SocialBar from "../components/common/SocialBar";
 import CountUp from "../components/common/CountUp";
 import RoyalShishaLogo from "../assets/Logo.jpeg";
 import { HERO_VIDEOS, VIDEO_SETTINGS } from "../config/videos";
+import LocationMap from "../components/maps/LocationMap";
 
 const Home = () => {
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
@@ -125,7 +125,6 @@ const Home = () => {
 
   return (
     <div className="min-h-screen">
-      <LivePopup />
       <SocialBar />
 
       {/* Hero Section with Video Carousel */}
@@ -318,118 +317,114 @@ const Home = () => {
                 alt="Royal Shisha Logo"
                 className="w-20 h-20 sm:w-24 sm:h-24 md:w-40 md:h-40 mx-auto rounded-full object-cover border-2 md:border-4 border-royal-gold shadow-2xl relative z-10"
               />
-              {/* Simplified logo glow animation */}
-              <motion.div
-                animate={{
-                  scale: [1, 1.05, 1],
-                  opacity: [0.3, 0.6, 0.3],
-                }}
-                transition={{
-                  duration: 4,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-                className="absolute inset-0 rounded-full border-2 md:border-4 border-royal-gold/40 -z-10"
-              />
+              <div className="absolute inset-0 bg-royal-gold/20 rounded-full blur-xl animate-pulse"></div>
             </div>
           </motion.div>
-
-          <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="text-2xl sm:text-3xl md:text-5xl lg:text-7xl font-royal font-bold mb-2 sm:mb-3 md:mb-6 royal-text-glow leading-tight"
-          >
-            Royal Shisha
-          </motion.h1>
-
-          <motion.p
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.6 }}
-            className="text-sm sm:text-base md:text-xl lg:text-2xl mb-3 sm:mb-4 md:mb-8 text-royal-cream-light font-light px-2 max-w-xs sm:max-w-md md:max-w-2xl mx-auto leading-relaxed"
-          >
-            Erleben Sie die ultimative königliche Hookah-Lounge in Deutschland
-          </motion.p>
 
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.8 }}
-            className="flex flex-col sm:flex-row gap-2 sm:gap-3 md:gap-4 justify-center items-center"
+            transition={{
+              duration: 1,
+              delay: 0.4,
+            }}
+            className="mb-6 md:mb-8"
+          >
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-royal font-bold mb-4 md:mb-6 royal-text-glow">
+              Royal Shisha Bar
+            </h1>
+            <p className="text-lg sm:text-xl md:text-2xl text-royal-cream-light mb-6 md:mb-8 max-w-3xl mx-auto leading-relaxed">
+              Erleben Sie die Kunst des Shisha-Rauchens in einer königlichen
+              Atmosphäre mit Premium-Aromen und exklusivem Service
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{
+              duration: 1,
+              delay: 0.6,
+            }}
+            className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8 md:mb-12"
           >
             <Link
               to="/menu"
-              className="btn-royal-primary text-xs sm:text-sm md:text-lg px-4 sm:px-6 md:px-8 py-2.5 sm:py-3 md:py-4 royal-hover-glow group w-full sm:w-auto max-w-xs sm:max-w-none"
+              className="px-8 py-4 bg-royal-gold text-royal-charcoal font-royal font-bold rounded-royal hover:bg-royal-gold/90 transition-all duration-300 royal-glow hover:scale-105 transform"
             >
-              <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 inline mr-1 sm:mr-2 group-hover:animate-spin transition-transform duration-300" />
-              Menü erkunden
+              Menü Entdecken
             </Link>
             <Link
               to="/events"
-              className="btn-royal-outline text-xs sm:text-sm md:text-lg px-4 sm:px-6 md:px-8 py-2.5 sm:py-3 md:py-4 royal-hover-glow group w-full sm:w-auto max-w-xs sm:max-w-none"
+              className="px-8 py-4 border-2 border-royal-gold text-royal-gold font-royal font-bold rounded-royal hover:bg-royal-gold hover:text-royal-charcoal transition-all duration-300 royal-glow hover:scale-105 transform"
             >
-              <Calendar className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 inline mr-1 sm:mr-2 group-hover:scale-110 transition-transform duration-300" />
-              Events ansehen
+              Events & Reservierungen
             </Link>
           </motion.div>
-        </div>
 
-        {/* Royal scroll indicator - Smaller on mobile */}
-        <motion.div
-          animate={{ y: [0, 10, 0] }}
-          transition={{ duration: 2, repeat: Infinity }}
-          className="absolute bottom-4 md:bottom-8 left-1/2 transform -translate-x-1/2 z-30"
-        >
-          <div className="w-4 h-6 md:w-6 md:h-10 border-2 border-royal-gold rounded-full flex justify-center royal-glow cursor-pointer">
-            <motion.div
-              animate={{ y: [0, 8, 0] }}
-              transition={{ duration: 2, repeat: Infinity }}
-              className="w-0.5 h-2 md:w-1 md:h-3 bg-royal-gold rounded-full mt-1 md:mt-2"
-            />
-          </div>
-        </motion.div>
+          {/* Stats Section - Responsive */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{
+              duration: 1,
+              delay: 0.8,
+            }}
+            className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 max-w-4xl mx-auto"
+          >
+            {stats.map((stat, index) => (
+              <div
+                key={index}
+                className="text-center p-4 bg-royal-gold/10 backdrop-blur-sm rounded-royal border border-royal-gold/20"
+              >
+                <div className="text-2xl md:text-3xl font-royal font-bold text-royal-gold mb-1">
+                  <CountUp end={stat.number} suffix={stat.suffix} />
+                </div>
+                <div className="text-xs md:text-sm text-royal-cream-light">
+                  {stat.label}
+                </div>
+              </div>
+            ))}
+          </motion.div>
+        </div>
       </section>
 
       {/* Features Section */}
-      <section className="py-20 bg-royal-gradient-cream">
+      <section className="py-16 md:py-24 bg-royal-charcoal">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              viewport={{ once: true }}
-            >
-              <Crown className="w-12 h-12 mx-auto text-royal-gold mb-4" />
-              <h2 className="text-4xl font-royal font-bold text-royal-charcoal mb-4">
-                Warum Royal Shisha wählen?
-              </h2>
-              <p className="text-xl text-royal-charcoal-light max-w-3xl mx-auto">
-                Wir bieten die perfekte königliche Atmosphäre für Entspannung
-                und Unterhaltung mit Premium-Qualität Shisha und
-                außergewöhnlichem Service.
-              </p>
-            </motion.div>
-          </div>
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
+            className="text-center mb-12 md:mb-16"
+          >
+            <h2 className="text-3xl md:text-5xl font-royal font-bold text-white mb-4 md:mb-6">
+              Warum Royal Shisha Bar?
+            </h2>
+            <p className="text-lg md:text-xl text-royal-cream-light max-w-3xl mx-auto">
+              Entdecken Sie die einzigartigen Vorteile, die uns zu Ihrer ersten
+              Wahl für ein königliches Shisha-Erlebnis machen
+            </p>
+          </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {features.map((feature, index) => (
               <motion.div
-                key={feature.title}
+                key={index}
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
+                transition={{ duration: 0.6, delay: index * 0.1 }}
                 viewport={{ once: true }}
-                className="text-center royal-card-luxury p-6 royal-hover-lift"
+                className="text-center p-6 bg-royal-gradient-gold rounded-royal royal-glow border border-royal-gold/30"
               >
-                <div className="w-16 h-16 bg-royal-gradient-gold rounded-full flex items-center justify-center mx-auto mb-4 royal-shadow">
-                  <feature.icon size={32} className="text-royal-charcoal" />
+                <div className="w-16 h-16 mx-auto mb-4 bg-royal-gold/20 rounded-full flex items-center justify-center">
+                  <feature.icon className="w-8 h-8 text-royal-gold" />
                 </div>
-                <h3 className="text-xl font-royal font-semibold text-royal-charcoal mb-2">
+                <h3 className="text-xl font-royal font-bold text-royal-charcoal mb-3">
                   {feature.title}
                 </h3>
-                <p className="text-royal-charcoal-light">
+                <p className="text-royal-charcoal/80 leading-relaxed">
                   {feature.description}
                 </p>
               </motion.div>
@@ -438,103 +433,85 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-20 royal-gradient">
+      {/* Contact Section */}
+      <section className="py-16 md:py-24 bg-gradient-to-br from-royal-purple-dark to-royal-burgundy">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {stats.map((stat, index) => (
-              <motion.div
-                key={stat.label}
-                initial={{ opacity: 0, scale: 0.8 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                viewport={{ once: true }}
-                className="text-center royal-glass rounded-xl p-6 royal-hover-glow"
-              >
-                <div className="text-4xl md:text-5xl font-royal font-bold text-royal-gold mb-2 royal-text-glow">
-                  <CountUp end={stat.number} suffix={stat.suffix} />
-                </div>
-                <div className="text-royal-cream-light font-medium">
-                  {stat.label}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-20 bg-royal-gradient-gold">
-        <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
+            className="text-center mb-12 md:mb-16"
+          >
+            <h2 className="text-3xl md:text-5xl font-royal font-bold text-white mb-4 md:mb-6">
+              Kontaktieren Sie Uns
+            </h2>
+            <p className="text-lg md:text-xl text-royal-cream-light max-w-3xl mx-auto">
+              Bereit für ein königliches Erlebnis? Kontaktieren Sie uns für
+              Reservierungen oder Fragen
+            </p>
+          </motion.div>
+
+          {/* Google Maps Integration */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             viewport={{ once: true }}
+            className="mb-12"
           >
-            <Crown className="w-16 h-16 mx-auto text-royal-charcoal mb-4" />
-            <h2 className="text-4xl font-royal font-bold text-royal-charcoal mb-4">
-              Bereit, Royal Shisha zu erleben?
-            </h2>
-            <p className="text-xl text-royal-charcoal-light mb-8">
-              Besuchen Sie uns für einen unvergesslichen Abend mit
-              Premium-Shisha und königlicher Unterhaltung.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                to="/contact"
-                className="bg-royal-charcoal text-royal-gold hover:bg-royal-charcoal-dark font-medium py-3 px-8 rounded-royal transition-all duration-300 royal-hover-glow"
-              >
-                Anfahrt
-              </Link>
-              <Link
-                to="/auth"
-                className="bg-transparent text-royal-charcoal border-2 border-royal-charcoal hover:bg-royal-charcoal hover:text-royal-gold font-medium py-3 px-8 rounded-royal transition-all duration-300 royal-hover-glow"
-              >
-                Royalty beitreten
-              </Link>
-            </div>
+            <LocationMap className="max-w-4xl mx-auto" />
           </motion.div>
-        </div>
-      </section>
 
-      {/* Location Section */}
-      <section className="py-20 royal-gradient">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
               viewport={{ once: true }}
+              className="text-center p-6 bg-white/10 backdrop-blur-sm rounded-royal border border-white/20"
             >
-              <h2 className="text-4xl font-royal font-bold text-royal-gold mb-4 royal-text-glow">
-                Unser Standort
-              </h2>
-              <p className="text-xl text-royal-cream-light max-w-3xl mx-auto">
-                Finden Sie uns im Herzen der Stadt, bereit, Ihnen ein
-                königliches Erlebnis zu bieten.
+              <Phone className="w-12 h-12 mx-auto mb-4 text-royal-gold" />
+              <h3 className="text-xl font-royal font-bold text-white mb-2">
+                Telefon
+              </h3>
+              <p className="text-royal-cream-light">+49 15781413767</p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              viewport={{ once: true }}
+              className="text-center p-6 bg-white/10 backdrop-blur-sm rounded-royal border border-white/20"
+            >
+              <Mail className="w-12 h-12 mx-auto mb-4 text-royal-gold" />
+              <h3 className="text-xl font-royal font-bold text-white mb-2">
+                E-Mail
+              </h3>
+              <p className="text-royal-cream-light">
+                Royal.Waldkraiburg@gmail.com
+              </p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              viewport={{ once: true }}
+              className="text-center p-6 bg-white/10 backdrop-blur-sm rounded-royal border border-white/20"
+            >
+              <Clock className="w-12 h-12 mx-auto mb-4 text-royal-gold" />
+              <h3 className="text-xl font-royal font-bold text-white mb-2">
+                Öffnungszeiten
+              </h3>
+              <p className="text-royal-cream-light">
+                Mo-Fr: 17:00 - 01:00
+                <br />
+                Sa-So: 17:00 - 03:00
               </p>
             </motion.div>
           </div>
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5 }}
-            viewport={{ once: true }}
-            className="relative h-96 rounded-xl overflow-hidden royal-shadow-gold"
-          >
-            <iframe
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2662.651733614105!2d12.41793831564884!3d48.2119149792298!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x47747e0b6238b7b7%3A0x8d5ea32f79641775!2sStadtpl.+2%2C+84478+Waldkraiburg%2C+Germany!5e0!3m2!1sen!2sus!4v1622550978839!5m2!1sen!2sus&t=h"
-              width="100%"
-              height="100%"
-              style={{ border: 0 }}
-              allowFullScreen={true}
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              className="absolute top-0 left-0 w-full h-full"
-            ></iframe>
-          </motion.div>
         </div>
       </section>
     </div>

@@ -41,7 +41,7 @@ VITE_GOOGLE_ANALYTICS_ID=your_google_analytics_id
 
 # Email Service (Optional - for Phase 2)
 VITE_SENDGRID_API_KEY=your_sendgrid_api_key
-VITE_SENDGRID_FROM_EMAIL=noreply@royalshisha.de
+VITE_SENDGRID_FROM_EMAIL=Royal.Waldkraiburg@gmail.com
 
 # Payment Processing (Optional - for Phase 2)
 VITE_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key

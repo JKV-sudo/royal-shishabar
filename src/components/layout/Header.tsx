@@ -11,14 +11,19 @@ import {
   Crown,
   ChevronDown,
   Shield,
+  ShoppingCart,
 } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
+import { useCart } from "../../contexts/CartContext";
+import Cart from "../common/Cart";
 import toast from "react-hot-toast";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isCartOpen, setIsCartOpen] = useState(false);
   const { user, isAuthenticated, logout } = useAuthStore();
+  const { getTotalItems } = useCart();
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   const navLinks = [
@@ -55,6 +60,11 @@ const Header = () => {
     }
   };
 
+  const handleCartClick = () => {
+    setIsCartOpen(true);
+    setIsMenuOpen(false); // Close mobile menu if open
+  };
+
   return (
     <motion.header
       className="fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-royal-charcoal-dark shadow-lg"
@@ -88,8 +98,29 @@ const Header = () => {
             ))}
           </nav>
 
-          {/* Desktop User Menu */}
-          <div className="hidden md:block">
+          {/* Desktop Cart and User Menu */}
+          <div className="hidden md:flex items-center space-x-4">
+            {/* Cart Button */}
+            <motion.button
+              onClick={handleCartClick}
+              className="relative bg-royal-gradient-gold text-royal-charcoal p-3 rounded-lg royal-glow hover:shadow-lg transition-all duration-300"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <ShoppingCart className="w-5 h-5" />
+
+              {/* Item Count Badge */}
+              {getTotalItems() > 0 && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center"
+                >
+                  {getTotalItems() > 99 ? "99+" : getTotalItems()}
+                </motion.div>
+              )}
+            </motion.button>
+
             {isAuthenticated ? (
               <div className="relative" ref={userMenuRef}>
                 <motion.button
@@ -171,7 +202,28 @@ const Header = () => {
           </div>
 
           {/* Mobile Menu Button */}
-          <div className="md:hidden">
+          <div className="md:hidden flex items-center space-x-3">
+            {/* Mobile Cart Button */}
+            <motion.button
+              onClick={handleCartClick}
+              className="relative bg-royal-gradient-gold text-royal-charcoal p-2 rounded-lg royal-glow hover:shadow-lg transition-all duration-300"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <ShoppingCart className="w-5 h-5" />
+
+              {/* Item Count Badge */}
+              {getTotalItems() > 0 && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
+                >
+                  {getTotalItems() > 99 ? "99+" : getTotalItems()}
+                </motion.div>
+              )}
+            </motion.button>
+
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="text-royal-gold"
@@ -263,6 +315,9 @@ const Header = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Cart Modal */}
+      <Cart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </motion.header>
   );
 };
