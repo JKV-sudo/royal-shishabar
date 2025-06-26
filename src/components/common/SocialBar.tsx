@@ -1,5 +1,6 @@
+import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Facebook, Instagram, Mail, Phone } from "lucide-react";
+import { Instagram, Mail, Phone } from "lucide-react";
 import { useState } from "react";
 
 const SocialBar = () => {
@@ -8,11 +9,10 @@ const SocialBar = () => {
   const socialLinks = [
     {
       icon: Instagram,
-      href: "#",
+      href: "https://www.instagram.com/royal.waldkraiburg/",
       label: "Instagram",
       color: "from-purple-500 via-pink-500 to-orange-500",
     },
-    { icon: Facebook, href: "#", label: "Facebook", color: "bg-blue-600" },
 
     {
       icon: Mail,

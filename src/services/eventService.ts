@@ -231,10 +231,10 @@ export class EventService {
   static async getUpcomingEvents(limitCount: number = 5): Promise<Event[]> {
     try {
       const now = new Date();
+      // Query only by date to avoid composite index requirement
       const q = query(
         collection(getFirestoreDB(), EVENTS_COLLECTION),
-        where('date', '>=', now),
-        where('isActive', '==', true)
+        where('date', '>=', now)
       );
 
       const querySnapshot = await getDocs(q);
@@ -242,13 +242,16 @@ export class EventService {
       
       querySnapshot.forEach((doc) => {
         const data = doc.data();
-        events.push({
-          id: doc.id,
-          ...data,
-          date: data.date.toDate(),
-          createdAt: data.createdAt.toDate(),
-          updatedAt: data.updatedAt.toDate(),
-        } as Event);
+        // Filter by isActive in memory
+        if (data.isActive === true) {
+          events.push({
+            id: doc.id,
+            ...data,
+            date: data.date.toDate(),
+            createdAt: data.createdAt.toDate(),
+            updatedAt: data.updatedAt.toDate(),
+          } as Event);
+        }
       });
 
       // Sort by date ascending and limit

@@ -1,3 +1,4 @@
+import React from "react";
 import { useState, useEffect, useRef } from "react";
 import { useInView } from "framer-motion";
 
@@ -27,11 +28,11 @@ const CountUp = ({
     const animate = (currentTime: number) => {
       if (!startTime) startTime = currentTime;
       const progress = Math.min((currentTime - startTime) / duration, 1);
-      
+
       // Smoother easing function - easeOutExpo
       const easeOutExpo = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
       const currentCount = Math.floor(easeOutExpo * end);
-      
+
       setCount(currentCount);
 
       if (progress < 1) {
