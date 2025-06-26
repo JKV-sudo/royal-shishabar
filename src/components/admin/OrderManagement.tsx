@@ -35,12 +35,15 @@ const OrderManagement: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
 
   const statusColors = {
-    pending: "bg-yellow-100 text-yellow-800",
-    confirmed: "bg-blue-100 text-blue-800",
-    preparing: "bg-orange-100 text-orange-800",
-    ready: "bg-green-100 text-green-800",
-    delivered: "bg-gray-100 text-gray-800",
-    cancelled: "bg-red-100 text-red-800",
+    pending: "bg-royal-gold/20 text-royal-gold border border-royal-gold/30",
+    confirmed:
+      "bg-royal-purple/20 text-royal-purple-light border border-royal-purple/30",
+    preparing:
+      "bg-royal-burgundy/20 text-royal-burgundy-light border border-royal-burgundy/30",
+    ready: "bg-green-600/20 text-green-500 border border-green-600/30",
+    delivered:
+      "bg-royal-charcoal/20 text-royal-cream border border-royal-charcoal/30",
+    cancelled: "bg-red-600/20 text-red-500 border border-red-600/30",
   };
 
   const statusIcons = {
@@ -160,14 +163,14 @@ const OrderManagement: React.FC = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white p-4 rounded-royal shadow-md border border-royal-gold/20"
+            className="bg-royal-charcoal-dark p-4 rounded-royal shadow-md border border-royal-gold/30 royal-glow"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-royal-charcoal/70">
+                <p className="text-sm text-royal-cream/70">
                   Gesamtbestellungen
                 </p>
-                <p className="text-2xl font-bold text-royal-charcoal">
+                <p className="text-2xl font-bold text-royal-cream">
                   {stats.totalOrders}
                 </p>
               </div>
@@ -179,16 +182,16 @@ const OrderManagement: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white p-4 rounded-royal shadow-md border border-royal-gold/20"
+            className="bg-royal-charcoal-dark p-4 rounded-royal shadow-md border border-royal-gold/30 royal-glow"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-royal-charcoal/70">Ausstehend</p>
-                <p className="text-2xl font-bold text-yellow-600">
+                <p className="text-sm text-royal-cream/70">Ausstehend</p>
+                <p className="text-2xl font-bold text-royal-gold">
                   {stats.pendingOrders}
                 </p>
               </div>
-              <Clock className="w-8 h-8 text-yellow-600" />
+              <Clock className="w-8 h-8 text-royal-gold" />
             </div>
           </motion.div>
 
@@ -196,11 +199,11 @@ const OrderManagement: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-white p-4 rounded-royal shadow-md border border-royal-gold/20"
+            className="bg-royal-charcoal-dark p-4 rounded-royal shadow-md border border-royal-gold/30 royal-glow"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-royal-charcoal/70">Gesamtumsatz</p>
+                <p className="text-sm text-royal-cream/70">Gesamtumsatz</p>
                 <p className="text-2xl font-bold text-royal-gold">
                   {stats.totalRevenue.toFixed(2)}€
                 </p>
@@ -213,12 +216,12 @@ const OrderManagement: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-white p-4 rounded-royal shadow-md border border-royal-gold/20"
+            className="bg-royal-charcoal-dark p-4 rounded-royal shadow-md border border-royal-gold/30 royal-glow"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-royal-charcoal/70">Ø Bestellwert</p>
-                <p className="text-2xl font-bold text-royal-charcoal">
+                <p className="text-sm text-royal-cream/70">Ø Bestellwert</p>
+                <p className="text-2xl font-bold text-royal-cream">
                   {stats.averageOrderValue.toFixed(2)}€
                 </p>
               </div>
@@ -229,9 +232,9 @@ const OrderManagement: React.FC = () => {
       )}
 
       {/* Filters */}
-      <div className="bg-white p-4 rounded-royal shadow-md border border-royal-gold/20">
+      <div className="bg-royal-charcoal-dark p-4 rounded-royal shadow-md border border-royal-gold/30 royal-glow">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-royal-charcoal">Filter</h3>
+          <h3 className="text-lg font-semibold text-royal-cream">Filter</h3>
           <button
             onClick={() => setShowFilters(!showFilters)}
             className="flex items-center space-x-2 text-royal-gold hover:text-royal-gold/80"
@@ -248,7 +251,7 @@ const OrderManagement: React.FC = () => {
             className="grid grid-cols-1 md:grid-cols-3 gap-4"
           >
             <div>
-              <label className="block text-sm font-medium text-royal-charcoal mb-2">
+              <label className="block text-sm font-medium text-royal-cream mb-2">
                 Status
               </label>
               <select
@@ -259,7 +262,7 @@ const OrderManagement: React.FC = () => {
                     status: (e.target.value as OrderStatus) || undefined,
                   })
                 }
-                className="w-full p-2 border border-royal-gold/30 rounded-royal focus:outline-none focus:ring-2 focus:ring-royal-gold/50"
+                className="w-full p-2 border border-royal-gold/30 rounded-royal focus:outline-none focus:ring-2 focus:ring-royal-gold/50 bg-royal-charcoal text-royal-cream"
               >
                 <option value="">Alle Status</option>
                 <option value="pending">Ausstehend</option>
@@ -272,7 +275,7 @@ const OrderManagement: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-royal-charcoal mb-2">
+              <label className="block text-sm font-medium text-royal-cream mb-2">
                 Tischnummer
               </label>
               <input
@@ -285,12 +288,12 @@ const OrderManagement: React.FC = () => {
                   })
                 }
                 placeholder="Alle Tische"
-                className="w-full p-2 border border-royal-gold/30 rounded-royal focus:outline-none focus:ring-2 focus:ring-royal-gold/50"
+                className="w-full p-2 border border-royal-gold/30 rounded-royal focus:outline-none focus:ring-2 focus:ring-royal-gold/50 bg-royal-charcoal text-royal-cream"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-royal-charcoal mb-2">
+              <label className="block text-sm font-medium text-royal-cream mb-2">
                 Suche
               </label>
               <input
@@ -300,7 +303,7 @@ const OrderManagement: React.FC = () => {
                   setFilters({ ...filters, search: e.target.value })
                 }
                 placeholder="Kunde, Artikel, etc."
-                className="w-full p-2 border border-royal-gold/30 rounded-royal focus:outline-none focus:ring-2 focus:ring-royal-gold/50"
+                className="w-full p-2 border border-royal-gold/30 rounded-royal focus:outline-none focus:ring-2 focus:ring-royal-gold/50 bg-royal-charcoal text-royal-cream"
               />
             </div>
           </motion.div>
@@ -308,7 +311,7 @@ const OrderManagement: React.FC = () => {
       </div>
 
       {/* Orders List */}
-      <div className="bg-white rounded-royal shadow-md border border-royal-gold/20 overflow-hidden">
+      <div className="bg-royal-charcoal-dark rounded-royal shadow-md border border-royal-gold/30 overflow-hidden royal-glow">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-royal-gradient-gold">

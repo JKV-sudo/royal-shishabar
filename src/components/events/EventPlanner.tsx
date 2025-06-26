@@ -193,55 +193,27 @@ const EventPlanner: React.FC = () => {
       <div className="mb-8">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            <h1 className="text-3xl font-bold text-royal-cream mb-2">
               Event Planner
             </h1>
-            <p className="text-gray-600">
+            <p className="text-royal-cream/70">
               Discover and join amazing events at Royal Shisha Bar
             </p>
           </div>
-          {isAdmin && (
-            <div className="flex gap-3">
-              <button
-                onClick={handleAddSampleEvents}
-                className="px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center"
-              >
-                <svg
-                  className="w-5 h-5 mr-2"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                  />
-                </svg>
-                Add Sample Events
-              </button>
-              <button
-                onClick={handleCreateEvent}
-                className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center"
-              >
-                <svg
-                  className="w-5 h-5 mr-2"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                  />
-                </svg>
-                Create Event
-              </button>
-            </div>
-          )}
+          <div className="flex space-x-4">
+            <button
+              onClick={handleAddSampleEvents}
+              className="bg-royal-charcoal text-royal-gold border border-royal-gold px-4 py-2 rounded-royal hover:bg-royal-gold hover:text-royal-charcoal transition-all duration-300"
+            >
+              Add Sample Events
+            </button>
+            <button
+              onClick={handleCreateEvent}
+              className="bg-royal-gradient-gold text-royal-charcoal px-4 py-2 rounded-royal royal-glow hover:shadow-lg transition-all duration-300"
+            >
+              Create Event
+            </button>
+          </div>
         </div>
 
         {/* Stats Cards */}

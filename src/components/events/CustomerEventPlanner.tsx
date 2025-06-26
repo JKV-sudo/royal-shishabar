@@ -107,23 +107,23 @@ const CustomerEventPlanner: React.FC = () => {
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+        <h1 className="text-3xl font-bold text-royal-cream mb-2">
           Upcoming Events
         </h1>
-        <p className="text-gray-600">
+        <p className="text-royal-cream/70">
           Discover amazing events at Royal Shisha Bar
         </p>
       </div>
 
       {/* Simple Filters */}
-      <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">
+      <div className="bg-royal-charcoal-dark rounded-royal shadow-lg p-6 mb-8 border border-royal-gold/30 royal-glow">
+        <h2 className="text-xl font-semibold text-royal-cream mb-4">
           Find Events
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Search */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-royal-cream mb-2">
               Search
             </label>
             <input
@@ -131,13 +131,13 @@ const CustomerEventPlanner: React.FC = () => {
               value={filters.search || ""}
               onChange={(e) => handleFilterChange("search", e.target.value)}
               placeholder="Search events..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-royal-gold/30 rounded-royal focus:ring-2 focus:ring-royal-gold/50 focus:border-transparent bg-royal-charcoal text-royal-cream"
             />
           </div>
 
           {/* Category */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-royal-cream mb-2">
               Category
             </label>
             <select
@@ -145,7 +145,7 @@ const CustomerEventPlanner: React.FC = () => {
               onChange={(e) =>
                 handleFilterChange("category", e.target.value || undefined)
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-royal-gold/30 rounded-royal focus:ring-2 focus:ring-royal-gold/50 focus:border-transparent bg-royal-charcoal text-royal-cream"
             >
               <option value="">All Categories</option>
               {categories.map((category) => (
@@ -158,7 +158,7 @@ const CustomerEventPlanner: React.FC = () => {
 
           {/* Date From */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-royal-cream mb-2">
               From Date
             </label>
             <input
@@ -174,7 +174,7 @@ const CustomerEventPlanner: React.FC = () => {
                   e.target.value ? new Date(e.target.value) : undefined
                 )
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-royal-gold/30 rounded-royal focus:ring-2 focus:ring-royal-gold/50 focus:border-transparent bg-royal-charcoal text-royal-cream"
             />
           </div>
         </div>
@@ -183,7 +183,7 @@ const CustomerEventPlanner: React.FC = () => {
         <div className="mt-4 flex justify-end">
           <button
             onClick={clearFilters}
-            className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+            className="px-4 py-2 text-royal-gold hover:text-royal-gold/80 transition-colors"
           >
             Clear Filters
           </button>
@@ -193,7 +193,7 @@ const CustomerEventPlanner: React.FC = () => {
       {/* Events Grid */}
       <div className="mb-8">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">
+          <h2 className="text-2xl font-bold text-royal-cream">
             Events ({filteredEvents.length})
           </h2>
         </div>

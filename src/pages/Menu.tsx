@@ -102,7 +102,7 @@ const Menu = () => {
 
       {/* Special Offers Section */}
       {specialOffers.length > 0 && (
-        <section className="py-8 bg-gradient-to-r from-red-500 to-red-600">
+        <section className="py-8 bg-royal-gradient">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -110,10 +110,10 @@ const Menu = () => {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="text-center mb-8"
             >
-              <h2 className="text-3xl md:text-4xl font-royal font-bold text-white mb-4">
+              <h2 className="text-3xl md:text-4xl font-royal font-bold text-royal-cream mb-4">
                 🎉 Spezielle Angebote
               </h2>
-              <p className="text-white/90 text-lg">
+              <p className="text-royal-cream/90 text-lg">
                 Begrenzte Zeit - Exklusive Deals für unsere königlichen Gäste
               </p>
             </motion.div>
@@ -125,32 +125,32 @@ const Menu = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: 0.3 + index * 0.1 }}
-                  className="bg-white/10 backdrop-blur-sm rounded-royal p-6 border border-white/20 relative overflow-hidden"
+                  className="bg-royal-charcoal-dark/80 backdrop-blur-sm rounded-royal p-6 border border-royal-gold/30 relative overflow-hidden royal-glow"
                 >
                   {/* Discount Badge */}
-                  <div className="absolute top-4 right-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+                  <div className="absolute top-4 right-4 bg-royal-gold text-royal-charcoal px-3 py-1 rounded-full text-sm font-bold">
                     -{offer.discountPercentage}%
                   </div>
 
                   <div className="space-y-4">
-                    <h3 className="text-xl font-royal font-bold text-white">
+                    <h3 className="text-xl font-royal font-bold text-royal-cream">
                       {offer.title}
                     </h3>
-                    <p className="text-white/80">{offer.description}</p>
+                    <p className="text-royal-cream/80">{offer.description}</p>
 
                     <div className="flex items-center justify-between">
-                      <div className="text-white">
-                        <span className="line-through text-white/60">
+                      <div className="text-royal-cream">
+                        <span className="line-through text-royal-cream/60">
                           {offer.originalPrice.toFixed(2)}€
                         </span>
-                        <span className="text-2xl font-bold ml-2">
+                        <span className="text-2xl font-bold ml-2 text-royal-gold">
                           {offer.discountedPrice.toFixed(2)}€
                         </span>
                       </div>
                     </div>
 
                     {offer.validUntil && (
-                      <div className="flex items-center text-white/80 text-sm">
+                      <div className="flex items-center text-royal-cream/80 text-sm">
                         <Clock className="w-4 h-4 mr-2" />
                         <span>
                           Gültig bis{" "}
@@ -169,7 +169,7 @@ const Menu = () => {
       )}
 
       {/* Category Filter */}
-      <section className="py-8 bg-white">
+      <section className="py-8 bg-royal-charcoal-dark">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-wrap justify-center gap-4">
             {categories.map((category) => (
@@ -181,7 +181,7 @@ const Menu = () => {
                 className={`px-6 py-3 rounded-royal font-royal font-semibold transition-all duration-300 ${
                   selectedCategory === category
                     ? "bg-royal-gradient-gold text-royal-charcoal royal-glow"
-                    : "bg-royal-charcoal/10 text-royal-charcoal hover:bg-royal-charcoal/20"
+                    : "bg-royal-charcoal text-royal-cream hover:bg-royal-charcoal-light border border-royal-gold/30"
                 }`}
               >
                 {category === "all" ? "Alle" : category}

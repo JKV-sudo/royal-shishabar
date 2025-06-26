@@ -8,7 +8,7 @@ const Events: React.FC = () => {
   const isAdmin = user?.role === "admin";
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-20">
+    <div className="min-h-screen bg-royal-gradient-cream pt-20">
       {isAdmin ? <EventPlanner /> : <CustomerEventPlanner />}
     </div>
   );
