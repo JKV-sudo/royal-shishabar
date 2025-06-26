@@ -1,28 +1,23 @@
 export interface MenuItem {
-  id?: string;
+  id: string;
   name: string;
   description: string;
   price: number;
-  category: 'food' | 'drinks' | 'tobacco' | 'other' | 'special-offers';
+  category: string;
   imageUrl?: string;
   isAvailable: boolean;
   isPopular?: boolean;
   allergens?: string[];
-  ingredients?: string[];
-  calories?: number;
+  nutritionalInfo?: {
+    calories?: number;
+    protein?: number;
+    carbs?: number;
+    fat?: number;
+  };
+  ingredients?: string | string[];
+  preparationTime?: string | number;
   createdAt: Date;
   updatedAt: Date;
-  createdBy: string;
-}
-
-export interface MenuCategory {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  color: string;
-  isActive: boolean;
-  sortOrder: number;
 }
 
 export interface SpecialOffer {
@@ -34,6 +29,7 @@ export interface SpecialOffer {
   discountPercentage: number;
   startDate: Date;
   endDate: Date;
+  validUntil?: Date;
   isActive: boolean;
   imageUrl?: string;
   terms?: string[];
@@ -45,50 +41,21 @@ export interface SpecialOffer {
   createdBy: string;
 }
 
-export const MENU_CATEGORIES: MenuCategory[] = [
-  {
-    id: 'food',
-    name: 'Speisen',
-    description: 'Leckere Gerichte und Snacks',
-    icon: '🍽️',
-    color: 'bg-orange-500',
-    isActive: true,
-    sortOrder: 1
-  },
-  {
-    id: 'drinks',
-    name: 'Getränke',
-    description: 'Erfrischende Getränke und Cocktails',
-    icon: '🥤',
-    color: 'bg-blue-500',
-    isActive: true,
-    sortOrder: 2
-  },
-  {
-    id: 'tobacco',
-    name: 'Tabak',
-    description: 'Premium Tabakprodukte',
-    icon: '🚬',
-    color: 'bg-gray-600',
-    isActive: true,
-    sortOrder: 3
-  },
-  {
-    id: 'special-offers',
-    name: 'Sonderangebote',
-    description: 'Exklusive Rabatte und Angebote',
-    icon: '🎉',
-    color: 'bg-red-500',
-    isActive: true,
-    sortOrder: 4
-  },
-  {
-    id: 'other',
-    name: 'Sonstiges',
-    description: 'Weitere Artikel und Services',
-    icon: '📦',
-    color: 'bg-purple-500',
-    isActive: true,
-    sortOrder: 5
-  }
+export interface MenuCategory {
+  id: string;
+  name: string;
+  description?: string;
+  imageUrl?: string;
+  isActive: boolean;
+  sortOrder: number;
+}
+
+export const MENU_CATEGORIES = [
+  { id: "food", name: "Speisen", icon: "🍽️" },
+  { id: "drinks", name: "Getränke", icon: "🥤" },
+  { id: "tobacco", name: "Tabak", icon: "🚬" },
+  { id: "shisha", name: "Shisha", icon: "💨" },
+  { id: "desserts", name: "Desserts", icon: "🍰" },
+  { id: "snacks", name: "Snacks", icon: "🍿" },
+  { id: "other", name: "Sonstiges", icon: "📦" },
 ]; 

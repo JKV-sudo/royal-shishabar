@@ -1,25 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import {
-  X,
-  Save,
-  Plus,
-  Trash2,
-  Calendar,
-  Percent,
-  Users,
-  Tag,
-} from "lucide-react";
+import { X, Save, Upload, Calendar, Tag, Percent, Euro } from "lucide-react";
 import { SpecialOffer } from "../../types/menu";
 import { SpecialOfferService } from "../../services/specialOfferService";
-import { useAuthStore } from "../../stores/authStore";
-import ImageUpload from "../common/ImageUpload";
 import { toast } from "react-hot-toast";
 
 interface SpecialOfferFormProps {
   offer?: SpecialOffer;
   onClose: () => void;
-  onSave: () => void;
+  onSuccess: () => void;
 }
 
 const SPECIAL_OFFER_CATEGORIES = [
@@ -34,24 +23,26 @@ const SPECIAL_OFFER_CATEGORIES = [
 const SpecialOfferForm: React.FC<SpecialOfferFormProps> = ({
   offer,
   onClose,
-  onSave,
+  onSuccess,
 }) => {
-  const { user } = useAuthStore();
-  const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState<Partial<SpecialOffer>>({
+  const [formData, setFormData] = useState({
     title: "",
     description: "",
     originalPrice: 0,
-    discountedPrice: 0,
     discountPercentage: 0,
-    startDate: new Date(),
-    endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
-    isActive: true,
-    imageUrl: "",
+    startDate: new Date().toISOString().split("T")[0],
+    endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split("T")[0],
+    category: "food" as SpecialOffer["category"],
+    maxUses: "",
     terms: [""],
-    maxUses: undefined,
-    category: "food",
+    isActive: true,
   });
+
+  const [loading, setLoading] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>("");
 
   useEffect(() => {
     if (offer) {
@@ -59,128 +50,136 @@ const SpecialOfferForm: React.FC<SpecialOfferFormProps> = ({
         title: offer.title,
         description: offer.description,
         originalPrice: offer.originalPrice,
-        discountedPrice: offer.discountedPrice,
         discountPercentage: offer.discountPercentage,
-        startDate: offer.startDate,
-        endDate: offer.endDate,
-        isActive: offer.isActive,
-        imageUrl: offer.imageUrl || "",
-        terms: offer.terms || [""],
-        maxUses: offer.maxUses,
+        startDate: offer.startDate.toISOString().split("T")[0],
+        endDate: offer.endDate.toISOString().split("T")[0],
         category: offer.category,
+        maxUses: offer.maxUses?.toString() || "",
+        terms: offer.terms?.length ? offer.terms : [""],
+        isActive: offer.isActive,
       });
+      if (offer.imageUrl) {
+        setImagePreview(offer.imageUrl);
+      }
     }
   }, [offer]);
 
-  const calculateDiscountPercentage = (
-    original: number,
-    discounted: number
+  const handleInputChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) => {
-    if (original <= 0) return 0;
-    return Math.round(((original - discounted) / original) * 100);
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
-  const calculateDiscountedPrice = (original: number, percentage: number) => {
-    return Math.round(((original * (100 - percentage)) / 100) * 100) / 100;
-  };
-
-  const handleInputChange = (field: keyof SpecialOffer, value: any) => {
-    setFormData((prev) => {
-      const updated = { ...prev, [field]: value };
-
-      // Auto-calculate discount percentage when prices change
-      if (field === "originalPrice" || field === "discountedPrice") {
-        if (updated.originalPrice && updated.discountedPrice) {
-          updated.discountPercentage = calculateDiscountPercentage(
-            updated.originalPrice,
-            updated.discountedPrice
-          );
-        }
-      }
-
-      // Auto-calculate discounted price when percentage changes
-      if (field === "discountPercentage" && updated.originalPrice) {
-        updated.discountedPrice = calculateDiscountedPrice(
-          updated.originalPrice,
-          value
-        );
-      }
-
-      return updated;
-    });
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleTermsChange = (index: number, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      terms: prev.terms?.map((term, i) => (i === index ? value : term)) || [""],
-    }));
+    const newTerms = [...formData.terms];
+    newTerms[index] = value;
+    setFormData((prev) => ({ ...prev, terms: newTerms }));
   };
 
   const addTerm = () => {
     setFormData((prev) => ({
       ...prev,
-      terms: [...(prev.terms || []), ""],
+      terms: [...prev.terms, ""],
     }));
   };
 
   const removeTerm = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      terms: prev.terms?.filter((_, i) => i !== index) || [""],
-    }));
+    if (formData.terms.length > 1) {
+      const newTerms = formData.terms.filter((_, i) => i !== index);
+      setFormData((prev) => ({ ...prev, terms: newTerms }));
+    }
+  };
+
+  const calculateDiscountedPrice = () => {
+    if (formData.originalPrice > 0 && formData.discountPercentage >= 0) {
+      return formData.originalPrice * (1 - formData.discountPercentage / 100);
+    }
+    return 0;
+  };
+
+  const validateForm = () => {
+    if (!formData.title.trim()) {
+      toast.error("Titel ist erforderlich");
+      return false;
+    }
+    if (!formData.description.trim()) {
+      toast.error("Beschreibung ist erforderlich");
+      return false;
+    }
+    if (formData.originalPrice <= 0) {
+      toast.error("Ursprungspreis muss größer als 0 sein");
+      return false;
+    }
+    if (formData.discountPercentage < 0 || formData.discountPercentage > 100) {
+      toast.error("Rabatt muss zwischen 0 und 100% liegen");
+      return false;
+    }
+    if (new Date(formData.startDate) >= new Date(formData.endDate)) {
+      toast.error("Enddatum muss nach dem Startdatum liegen");
+      return false;
+    }
+    return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!user) {
-      toast.error("Sie müssen angemeldet sein");
-      return;
-    }
+    if (!validateForm()) return;
 
-    if (
-      !formData.title ||
-      !formData.description ||
-      !formData.originalPrice ||
-      !formData.discountedPrice
-    ) {
-      toast.error("Bitte füllen Sie alle Pflichtfelder aus");
-      return;
-    }
-
-    if (
-      formData.startDate &&
-      formData.endDate &&
-      formData.startDate >= formData.endDate
-    ) {
-      toast.error("Das Enddatum muss nach dem Startdatum liegen");
-      return;
-    }
+    setLoading(true);
 
     try {
-      setIsLoading(true);
-
+      const discountedPrice = calculateDiscountedPrice();
       const offerData = {
-        ...formData,
-        createdBy: user.uid,
-      } as Omit<SpecialOffer, "id" | "createdAt" | "updatedAt" | "currentUses">;
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        originalPrice: formData.originalPrice,
+        discountedPrice,
+        discountPercentage: formData.discountPercentage,
+        startDate: new Date(formData.startDate),
+        endDate: new Date(formData.endDate),
+        category: formData.category,
+        isActive: formData.isActive,
+        maxUses: formData.maxUses ? parseInt(formData.maxUses) : undefined,
+        currentUses: offer?.currentUses || 0,
+        terms: formData.terms.filter((term) => term.trim()),
+        imageUrl: imagePreview || undefined,
+        createdBy: "admin",
+      };
 
-      if (offer) {
-        await SpecialOfferService.updateSpecialOffer(offer.id!, offerData);
+      if (offer?.id) {
+        await SpecialOfferService.updateSpecialOffer(offer.id, offerData);
         toast.success("Sonderangebot erfolgreich aktualisiert");
       } else {
         await SpecialOfferService.createSpecialOffer(offerData);
         toast.success("Sonderangebot erfolgreich erstellt");
       }
 
-      onSave();
+      onSuccess();
       onClose();
     } catch (error) {
       console.error("Error saving special offer:", error);
       toast.error("Fehler beim Speichern des Sonderangebots");
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
@@ -189,222 +188,179 @@ const SpecialOfferForm: React.FC<SpecialOfferFormProps> = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
     >
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className="bg-royal-charcoal rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+        className="bg-royal-charcoal-dark rounded-royal p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
       >
-        <div className="p-6 border-b border-royal-gold/20">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-royal font-bold text-royal-gold">
-              {offer ? "Sonderangebot bearbeiten" : "Neues Sonderangebot"}
-            </h2>
-            <button
-              onClick={onClose}
-              className="text-royal-cream-light hover:text-royal-gold transition-colors"
-            >
-              <X size={24} />
-            </button>
-          </div>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-royal font-bold text-royal-cream">
+            {offer ? "Sonderangebot bearbeiten" : "Neues Sonderangebot"}
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-royal-cream hover:text-royal-gold transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Basic Information */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-royal-cream font-medium mb-2">
-                Titel *
-              </label>
-              <input
-                type="text"
-                value={formData.title}
-                onChange={(e) => handleInputChange("title", e.target.value)}
-                className="w-full px-4 py-2 bg-royal-charcoal-light border border-royal-gold/30 rounded-lg text-royal-cream focus:border-royal-gold focus:outline-none"
-                placeholder="Sonderangebot Titel"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-royal-cream font-medium mb-2">
-                Kategorie *
-              </label>
-              <select
-                value={formData.category}
-                onChange={(e) => handleInputChange("category", e.target.value)}
-                className="w-full px-4 py-2 bg-royal-charcoal-light border border-royal-gold/30 rounded-lg text-royal-cream focus:border-royal-gold focus:outline-none"
-                required
-              >
-                {SPECIAL_OFFER_CATEGORIES.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Title */}
+          <div>
+            <label className="block text-royal-cream font-medium mb-2">
+              Titel *
+            </label>
+            <input
+              type="text"
+              name="title"
+              value={formData.title}
+              onChange={handleInputChange}
+              className="w-full px-4 py-3 bg-royal-charcoal border border-royal-gold/30 rounded-royal text-royal-cream placeholder-royal-cream/50 focus:outline-none focus:border-royal-gold"
+              placeholder="Angebotstitel eingeben"
+              required
+            />
           </div>
 
+          {/* Description */}
           <div>
             <label className="block text-royal-cream font-medium mb-2">
               Beschreibung *
             </label>
             <textarea
+              name="description"
               value={formData.description}
-              onChange={(e) => handleInputChange("description", e.target.value)}
-              className="w-full px-4 py-2 bg-royal-charcoal-light border border-royal-gold/30 rounded-lg text-royal-cream focus:border-royal-gold focus:outline-none h-24 resize-none"
-              placeholder="Beschreibung des Sonderangebots"
+              onChange={handleInputChange}
+              rows={3}
+              className="w-full px-4 py-3 bg-royal-charcoal border border-royal-gold/30 rounded-royal text-royal-cream placeholder-royal-cream/50 focus:outline-none focus:border-royal-gold resize-none"
+              placeholder="Detaillierte Beschreibung des Angebots"
               required
             />
           </div>
 
+          {/* Category */}
+          <div>
+            <label className="block text-royal-cream font-medium mb-2">
+              Kategorie
+            </label>
+            <select
+              name="category"
+              value={formData.category}
+              onChange={handleInputChange}
+              className="w-full px-4 py-3 bg-royal-charcoal border border-royal-gold/30 rounded-royal text-royal-cream focus:outline-none focus:border-royal-gold"
+            >
+              {SPECIAL_OFFER_CATEGORIES.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Pricing */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-royal-cream font-medium mb-2">
                 Ursprungspreis (€) *
               </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.originalPrice}
-                onChange={(e) =>
-                  handleInputChange(
-                    "originalPrice",
-                    parseFloat(e.target.value) || 0
-                  )
-                }
-                className="w-full px-4 py-2 bg-royal-charcoal-light border border-royal-gold/30 rounded-lg text-royal-cream focus:border-royal-gold focus:outline-none"
-                placeholder="0.00"
-                required
-              />
+              <div className="relative">
+                <Euro className="absolute left-3 top-1/2 transform -translate-y-1/2 text-royal-cream/50 w-4 h-4" />
+                <input
+                  type="number"
+                  name="originalPrice"
+                  value={formData.originalPrice}
+                  onChange={handleInputChange}
+                  step="0.01"
+                  min="0"
+                  className="w-full pl-10 pr-4 py-3 bg-royal-charcoal border border-royal-gold/30 rounded-royal text-royal-cream focus:outline-none focus:border-royal-gold"
+                  required
+                />
+              </div>
             </div>
 
             <div>
               <label className="block text-royal-cream font-medium mb-2">
                 Rabatt (%) *
               </label>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                value={formData.discountPercentage}
-                onChange={(e) =>
-                  handleInputChange(
-                    "discountPercentage",
-                    parseInt(e.target.value) || 0
-                  )
-                }
-                className="w-full px-4 py-2 bg-royal-charcoal-light border border-royal-gold/30 rounded-lg text-royal-cream focus:border-royal-gold focus:outline-none"
-                placeholder="0"
-                required
-              />
+              <div className="relative">
+                <Percent className="absolute left-3 top-1/2 transform -translate-y-1/2 text-royal-cream/50 w-4 h-4" />
+                <input
+                  type="number"
+                  name="discountPercentage"
+                  value={formData.discountPercentage}
+                  onChange={handleInputChange}
+                  min="0"
+                  max="100"
+                  className="w-full pl-10 pr-4 py-3 bg-royal-charcoal border border-royal-gold/30 rounded-royal text-royal-cream focus:outline-none focus:border-royal-gold"
+                  required
+                />
+              </div>
             </div>
 
             <div>
               <label className="block text-royal-cream font-medium mb-2">
-                Reduzierter Preis (€)
+                Neuer Preis (€)
               </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.discountedPrice}
-                onChange={(e) =>
-                  handleInputChange(
-                    "discountedPrice",
-                    parseFloat(e.target.value) || 0
-                  )
-                }
-                className="w-full px-4 py-2 bg-royal-charcoal-light border border-royal-gold/30 rounded-lg text-royal-cream focus:border-royal-gold focus:outline-none"
-                placeholder="0.00"
-                readOnly
-              />
+              <div className="px-4 py-3 bg-royal-charcoal border border-royal-gold/30 rounded-royal text-royal-gold font-bold">
+                {calculateDiscountedPrice().toFixed(2)}€
+              </div>
             </div>
           </div>
 
-          {/* Date Range */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Dates */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-royal-cream font-medium mb-2">
                 Startdatum *
               </label>
-              <input
-                type="datetime-local"
-                value={
-                  formData.startDate
-                    ? new Date(formData.startDate).toISOString().slice(0, 16)
-                    : ""
-                }
-                onChange={(e) =>
-                  handleInputChange("startDate", new Date(e.target.value))
-                }
-                className="w-full px-4 py-2 bg-royal-charcoal-light border border-royal-gold/30 rounded-lg text-royal-cream focus:border-royal-gold focus:outline-none"
-                required
-              />
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-royal-cream/50 w-4 h-4" />
+                <input
+                  type="date"
+                  name="startDate"
+                  value={formData.startDate}
+                  onChange={handleInputChange}
+                  className="w-full pl-10 pr-4 py-3 bg-royal-charcoal border border-royal-gold/30 rounded-royal text-royal-cream focus:outline-none focus:border-royal-gold"
+                  required
+                />
+              </div>
             </div>
 
             <div>
               <label className="block text-royal-cream font-medium mb-2">
                 Enddatum *
               </label>
-              <input
-                type="datetime-local"
-                value={
-                  formData.endDate
-                    ? new Date(formData.endDate).toISOString().slice(0, 16)
-                    : ""
-                }
-                onChange={(e) =>
-                  handleInputChange("endDate", new Date(e.target.value))
-                }
-                className="w-full px-4 py-2 bg-royal-charcoal-light border border-royal-gold/30 rounded-lg text-royal-cream focus:border-royal-gold focus:outline-none"
-                required
-              />
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-royal-cream/50 w-4 h-4" />
+                <input
+                  type="date"
+                  name="endDate"
+                  value={formData.endDate}
+                  onChange={handleInputChange}
+                  className="w-full pl-10 pr-4 py-3 bg-royal-charcoal border border-royal-gold/30 rounded-royal text-royal-cream focus:outline-none focus:border-royal-gold"
+                  required
+                />
+              </div>
             </div>
           </div>
 
-          {/* Usage Limits */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-royal-cream font-medium mb-2">
-                Maximale Nutzungen (optional)
-              </label>
-              <input
-                type="number"
-                min="1"
-                value={formData.maxUses || ""}
-                onChange={(e) =>
-                  handleInputChange(
-                    "maxUses",
-                    e.target.value ? parseInt(e.target.value) : undefined
-                  )
-                }
-                className="w-full px-4 py-2 bg-royal-charcoal-light border border-royal-gold/30 rounded-lg text-royal-cream focus:border-royal-gold focus:outline-none"
-                placeholder="Unbegrenzt"
-              />
-            </div>
-
-            <div className="flex items-center space-x-3">
-              <input
-                type="checkbox"
-                id="isActive"
-                checked={formData.isActive}
-                onChange={(e) =>
-                  handleInputChange("isActive", e.target.checked)
-                }
-                className="w-4 h-4 text-royal-gold bg-royal-charcoal-light border-royal-gold/30 rounded focus:ring-royal-gold"
-              />
-              <label
-                htmlFor="isActive"
-                className="text-royal-cream font-medium"
-              >
-                Angebot ist aktiv
-              </label>
-            </div>
+          {/* Max Uses */}
+          <div>
+            <label className="block text-royal-cream font-medium mb-2">
+              Maximale Nutzungen (optional)
+            </label>
+            <input
+              type="number"
+              name="maxUses"
+              value={formData.maxUses}
+              onChange={handleInputChange}
+              min="1"
+              className="w-full px-4 py-3 bg-royal-charcoal border border-royal-gold/30 rounded-royal text-royal-cream focus:outline-none focus:border-royal-gold"
+              placeholder="Unbegrenzt wenn leer"
+            />
           </div>
 
           {/* Image Upload */}
@@ -412,11 +368,33 @@ const SpecialOfferForm: React.FC<SpecialOfferFormProps> = ({
             <label className="block text-royal-cream font-medium mb-2">
               Bild (optional)
             </label>
-            <ImageUpload
-              currentImageUrl={formData.imageUrl}
-              onImageUploaded={(url) => handleInputChange("imageUrl", url)}
-              folder="special-offers"
-            />
+            <div className="border-2 border-dashed border-royal-gold/30 rounded-royal p-6 text-center">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="hidden"
+                id="image-upload"
+              />
+              <label
+                htmlFor="image-upload"
+                className="cursor-pointer flex flex-col items-center"
+              >
+                <Upload className="w-8 h-8 text-royal-gold mb-2" />
+                <span className="text-royal-cream">
+                  {imagePreview ? "Bild ändern" : "Bild hochladen"}
+                </span>
+              </label>
+              {imagePreview && (
+                <div className="mt-4">
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="max-w-full h-32 object-cover rounded-royal mx-auto"
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Terms and Conditions */}
@@ -424,58 +402,77 @@ const SpecialOfferForm: React.FC<SpecialOfferFormProps> = ({
             <label className="block text-royal-cream font-medium mb-2">
               Bedingungen (optional)
             </label>
-            <div className="space-y-2">
-              {formData.terms?.map((term, index) => (
-                <div key={index} className="flex space-x-2">
-                  <input
-                    type="text"
-                    value={term}
-                    onChange={(e) => handleTermsChange(index, e.target.value)}
-                    className="flex-1 px-4 py-2 bg-royal-charcoal-light border border-royal-gold/30 rounded-lg text-royal-cream focus:border-royal-gold focus:outline-none"
-                    placeholder="Bedingung hinzufügen"
-                  />
-                  {formData.terms && formData.terms.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeTerm(index)}
-                      className="px-3 py-2 text-red-400 hover:text-red-300 transition-colors"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  )}
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={addTerm}
-                className="flex items-center space-x-2 text-royal-gold hover:text-royal-gold-light transition-colors"
-              >
-                <Plus size={16} />
-                <span>Bedingung hinzufügen</span>
-              </button>
-            </div>
+            {formData.terms.map((term, index) => (
+              <div key={index} className="flex gap-2 mb-2">
+                <input
+                  type="text"
+                  value={term}
+                  onChange={(e) => handleTermsChange(index, e.target.value)}
+                  className="flex-1 px-4 py-3 bg-royal-charcoal border border-royal-gold/30 rounded-royal text-royal-cream focus:outline-none focus:border-royal-gold"
+                  placeholder="Bedingung eingeben"
+                />
+                {formData.terms.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeTerm(index)}
+                    className="px-3 py-3 bg-red-600 text-white rounded-royal hover:bg-red-700 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={addTerm}
+              className="text-royal-gold hover:text-royal-gold-light transition-colors"
+            >
+              + Bedingung hinzufügen
+            </button>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex justify-end space-x-4 pt-6 border-t border-royal-gold/20">
+          {/* Active Status */}
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="isActive"
+              name="isActive"
+              checked={formData.isActive}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, isActive: e.target.checked }))
+              }
+              className="w-4 h-4 text-royal-gold bg-royal-charcoal border-royal-gold/30 rounded focus:ring-royal-gold"
+            />
+            <label htmlFor="isActive" className="ml-2 text-royal-cream">
+              Angebot ist aktiv
+            </label>
+          </div>
+
+          {/* Submit Buttons */}
+          <div className="flex gap-4 pt-4">
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 bg-royal-gradient-gold text-royal-charcoal px-6 py-3 rounded-royal font-royal font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <div className="flex items-center justify-center">
+                  <div className="w-4 h-4 border-2 border-royal-charcoal border-t-transparent rounded-full animate-spin mr-2" />
+                  Speichern...
+                </div>
+              ) : (
+                <div className="flex items-center justify-center">
+                  <Save className="w-4 h-4 mr-2" />
+                  {offer ? "Aktualisieren" : "Erstellen"}
+                </div>
+              )}
+            </button>
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-2 text-royal-cream-light hover:text-royal-cream transition-colors"
+              className="px-6 py-3 bg-royal-charcoal text-royal-cream border border-royal-gold/30 rounded-royal font-royal font-semibold hover:bg-royal-charcoal-light transition-colors"
             >
               Abbrechen
-            </button>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="flex items-center space-x-2 px-6 py-2 bg-royal-gradient-gold text-royal-charcoal rounded-lg font-medium hover:shadow-lg transition-all duration-200 disabled:opacity-50"
-            >
-              {isLoading ? (
-                <div className="w-4 h-4 border-2 border-royal-charcoal border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Save size={16} />
-              )}
-              <span>{offer ? "Aktualisieren" : "Erstellen"}</span>
             </button>
           </div>
         </form>

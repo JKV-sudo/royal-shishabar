@@ -1,336 +1,241 @@
+import { getFirestoreDB } from "../config/firebase";
 import {
   collection,
+  doc,
   addDoc,
   updateDoc,
   deleteDoc,
-  doc,
   getDocs,
   query,
   where,
   orderBy,
   onSnapshot,
-  Timestamp,
-} from 'firebase/firestore';
-import { getFirestoreDB } from '../config/firebase';
-import { MenuItem, MenuCategory, MENU_CATEGORIES } from '../types/menu';
+  serverTimestamp,
+} from "firebase/firestore";
+import { MenuItem } from "../types/menu";
+
+const COLLECTION_NAME = "menuItems";
 
 export class MenuService {
-  private static COLLECTION = 'menu_items';
+  // Real-time listener for menu items
+  static onMenuItemsChange(callback: (items: MenuItem[]) => void) {
+    const q = query(
+      collection(getFirestoreDB(), COLLECTION_NAME),
+      where("isAvailable", "==", true),
+      orderBy("category"),
+      orderBy("name")
+    );
 
-  // Create a new menu item
-  static async createMenuItem(item: Omit<MenuItem, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
-    try {
-      const itemData = {
-        ...item,
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now(),
-      };
-
-      const docRef = await addDoc(collection(getFirestoreDB(), this.COLLECTION), itemData);
-      return docRef.id;
-    } catch (error) {
-      console.error('Error creating menu item:', error);
-      throw new Error('Failed to create menu item');
-    }
+    return onSnapshot(q, (snapshot) => {
+      const items: MenuItem[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        items.push({
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate() || new Date(),
+          updatedAt: data.updatedAt?.toDate() || new Date(),
+        } as MenuItem);
+      });
+      callback(items);
+    });
   }
 
   // Get all menu items
   static async getAllMenuItems(): Promise<MenuItem[]> {
-    try {
-      const q = query(
-        collection(getFirestoreDB(), this.COLLECTION)
-      );
+    const q = query(
+      collection(getFirestoreDB(), COLLECTION_NAME),
+      orderBy("category"),
+      orderBy("name")
+    );
+    const snapshot = await getDocs(q);
+    
+    const items: MenuItem[] = [];
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      items.push({
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt?.toDate() || new Date(),
+        updatedAt: data.updatedAt?.toDate() || new Date(),
+      } as MenuItem);
+    });
+    
+    return items;
+  }
 
-      const querySnapshot = await getDocs(q);
-      const items: MenuItem[] = [];
-
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        items.push({
-          id: doc.id,
-          name: data.name,
-          description: data.description,
-          price: data.price,
-          category: data.category,
-          imageUrl: data.imageUrl,
-          isAvailable: data.isAvailable,
-          isPopular: data.isPopular || false,
-          allergens: data.allergens || [],
-          ingredients: data.ingredients || [],
-          calories: data.calories,
-          createdAt: data.createdAt.toDate(),
-          updatedAt: data.updatedAt.toDate(),
-          createdBy: data.createdBy,
-        });
-      });
-
-      return items.sort((a, b) => {
-        if (a.category !== b.category) {
-          return a.category.localeCompare(b.category);
-        }
-        return a.name.localeCompare(b.name);
-      });
-    } catch (error) {
-      console.error('Error getting menu items:', error);
-      throw new Error('Failed to get menu items');
-    }
+  // Get available menu items
+  static async getAvailableMenuItems(): Promise<MenuItem[]> {
+    const q = query(
+      collection(getFirestoreDB(), COLLECTION_NAME),
+      where("isAvailable", "==", true),
+      orderBy("category"),
+      orderBy("name")
+    );
+    
+    const snapshot = await getDocs(q);
+    const items: MenuItem[] = [];
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      items.push({
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt?.toDate() || new Date(),
+        updatedAt: data.updatedAt?.toDate() || new Date(),
+      } as MenuItem);
+    });
+    
+    return items;
   }
 
   // Get menu items by category
   static async getMenuItemsByCategory(category: string): Promise<MenuItem[]> {
-    try {
-      const q = query(
-        collection(getFirestoreDB(), this.COLLECTION),
-        where('category', '==', category),
-        where('isAvailable', '==', true)
-      );
-
-      const querySnapshot = await getDocs(q);
-      const items: MenuItem[] = [];
-
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        items.push({
-          id: doc.id,
-          name: data.name,
-          description: data.description,
-          price: data.price,
-          category: data.category,
-          imageUrl: data.imageUrl,
-          isAvailable: data.isAvailable,
-          isPopular: data.isPopular || false,
-          allergens: data.allergens || [],
-          ingredients: data.ingredients || [],
-          calories: data.calories,
-          createdAt: data.createdAt.toDate(),
-          updatedAt: data.updatedAt.toDate(),
-          createdBy: data.createdBy,
-        });
-      });
-
-      return items.sort((a, b) => a.name.localeCompare(b.name));
-    } catch (error) {
-      console.error('Error getting menu items by category:', error);
-      throw new Error('Failed to get menu items by category');
-    }
+    const q = query(
+      collection(getFirestoreDB(), COLLECTION_NAME),
+      where("category", "==", category),
+      where("isAvailable", "==", true),
+      orderBy("name")
+    );
+    
+    const snapshot = await getDocs(q);
+    const items: MenuItem[] = [];
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      items.push({
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt?.toDate() || new Date(),
+        updatedAt: data.updatedAt?.toDate() || new Date(),
+      } as MenuItem);
+    });
+    
+    return items;
   }
 
-  // Get popular menu items
-  static async getPopularMenuItems(): Promise<MenuItem[]> {
-    try {
-      const q = query(
-        collection(getFirestoreDB(), this.COLLECTION),
-        where('isPopular', '==', true),
-        where('isAvailable', '==', true)
-      );
-
-      const querySnapshot = await getDocs(q);
-      const items: MenuItem[] = [];
-
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        items.push({
-          id: doc.id,
-          name: data.name,
-          description: data.description,
-          price: data.price,
-          category: data.category,
-          imageUrl: data.imageUrl,
-          isAvailable: data.isAvailable,
-          isPopular: data.isPopular || false,
-          allergens: data.allergens || [],
-          ingredients: data.ingredients || [],
-          calories: data.calories,
-          createdAt: data.createdAt.toDate(),
-          updatedAt: data.updatedAt.toDate(),
-          createdBy: data.createdBy,
-        });
-      });
-
-      return items.sort((a, b) => a.name.localeCompare(b.name));
-    } catch (error) {
-      console.error('Error getting popular menu items:', error);
-      throw new Error('Failed to get popular menu items');
-    }
+  // Create a new menu item
+  static async createMenuItem(itemData: Omit<MenuItem, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+    const docRef = await addDoc(collection(getFirestoreDB(), COLLECTION_NAME), {
+      ...itemData,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    
+    return docRef.id;
   }
 
   // Update a menu item
-  static async updateMenuItem(id: string, updates: Partial<MenuItem>): Promise<void> {
-    try {
-      const itemRef = doc(getFirestoreDB(), this.COLLECTION, id);
-      await updateDoc(itemRef, {
-        ...updates,
-        updatedAt: Timestamp.now(),
-      });
-    } catch (error) {
-      console.error('Error updating menu item:', error);
-      throw new Error('Failed to update menu item');
-    }
+  static async updateMenuItem(
+    id: string,
+    updates: Partial<Omit<MenuItem, 'id' | 'createdAt' | 'updatedAt'>>
+  ): Promise<void> {
+    const docRef = doc(getFirestoreDB(), COLLECTION_NAME, id);
+    await updateDoc(docRef, {
+      ...updates,
+      updatedAt: serverTimestamp(),
+    });
   }
 
   // Delete a menu item
   static async deleteMenuItem(id: string): Promise<void> {
-    try {
-      const itemRef = doc(getFirestoreDB(), this.COLLECTION, id);
-      await deleteDoc(itemRef);
-    } catch (error) {
-      console.error('Error deleting menu item:', error);
-      throw new Error('Failed to delete menu item');
-    }
+    const docRef = doc(getFirestoreDB(), COLLECTION_NAME, id);
+    await deleteDoc(docRef);
   }
 
-  // Toggle menu item availability
+  // Get a single menu item by ID
+  static async getMenuItemById(id: string): Promise<MenuItem | null> {
+    const docRef = doc(getFirestoreDB(), COLLECTION_NAME, id);
+    const docSnap = await getDocs(query(collection(getFirestoreDB(), COLLECTION_NAME), where("__name__", "==", id)));
+    
+    if (docSnap.empty) {
+      return null;
+    }
+
+    const data = docSnap.docs[0].data();
+    return {
+      id: docSnap.docs[0].id,
+      ...data,
+      createdAt: data.createdAt?.toDate() || new Date(),
+      updatedAt: data.updatedAt?.toDate() || new Date(),
+    } as MenuItem;
+  }
+
+  // Get unique categories
+  static async getCategories(): Promise<string[]> {
+    const items = await this.getAllMenuItems();
+    const categories = Array.from(new Set(items.map(item => item.category)));
+    return categories.sort();
+  }
+
+  // Toggle item availability
+  static async toggleItemAvailability(id: string, isAvailable: boolean): Promise<void> {
+    await this.updateMenuItem(id, { isAvailable });
+  }
+
+  // Toggle item availability (alias for compatibility)
   static async toggleMenuItemAvailability(id: string, isAvailable: boolean): Promise<void> {
-    try {
-      await this.updateMenuItem(id, { isAvailable });
-    } catch (error) {
-      console.error('Error toggling menu item availability:', error);
-      throw new Error('Failed to toggle menu item availability');
-    }
+    await this.updateMenuItem(id, { isAvailable });
   }
 
-  // Toggle menu item popularity
+  // Toggle item popularity
   static async toggleMenuItemPopularity(id: string, isPopular: boolean): Promise<void> {
-    try {
-      await this.updateMenuItem(id, { isPopular });
-    } catch (error) {
-      console.error('Error toggling menu item popularity:', error);
-      throw new Error('Failed to toggle menu item popularity');
-    }
-  }
-
-  // Real-time listener for menu items
-  static onMenuItemsChange(callback: (items: MenuItem[]) => void): () => void {
-    const q = query(
-      collection(getFirestoreDB(), this.COLLECTION)
-    );
-
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const items: MenuItem[] = [];
-
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        items.push({
-          id: doc.id,
-          name: data.name,
-          description: data.description,
-          price: data.price,
-          category: data.category,
-          imageUrl: data.imageUrl,
-          isAvailable: data.isAvailable,
-          isPopular: data.isPopular || false,
-          allergens: data.allergens || [],
-          ingredients: data.ingredients || [],
-          calories: data.calories,
-          createdAt: data.createdAt.toDate(),
-          updatedAt: data.updatedAt.toDate(),
-          createdBy: data.createdBy,
-        });
-      });
-
-      const sortedItems = items.sort((a, b) => {
-        if (a.category !== b.category) {
-          return a.category.localeCompare(b.category);
-        }
-        return a.name.localeCompare(b.name);
-      });
-
-      callback(sortedItems);
-    }, (error) => {
-      console.error('Error listening to menu items:', error);
-    });
-
-    return unsubscribe;
-  }
-
-  // Get menu categories
-  static getMenuCategories(): MenuCategory[] {
-    return MENU_CATEGORIES;
+    await this.updateMenuItem(id, { isPopular });
   }
 
   // Create sample menu items
   static async createSampleMenuItems(): Promise<void> {
     const sampleItems = [
       {
-        name: 'Klassischer Burger',
-        description: 'Saftiger Rindfleischburger mit frischem Salat, Tomate und spezieller Sauce',
-        price: 12.99,
-        category: 'food' as const,
+        name: "Premium Shisha Mix",
+        description: "Exklusive Mischung aus hochwertigen Tabaksorten",
+        price: 15.00,
+        category: "shisha",
         isAvailable: true,
         isPopular: true,
-        allergens: ['gluten', 'milch'],
-        ingredients: ['rindfleisch', 'salat', 'tomate', 'zwiebel', 'brötchen'],
-        calories: 650,
-        createdBy: 'admin'
-      },
-      {
-        name: 'Margherita Pizza',
-        description: 'Traditionelle Pizza mit Tomatensauce, Mozzarella und Basilikum',
-        price: 16.99,
-        category: 'food' as const,
-        isAvailable: true,
-        isPopular: true,
-        allergens: ['gluten', 'milch'],
-        ingredients: ['teig', 'tomatensauce', 'mozzarella', 'basilikum'],
-        calories: 800,
-        createdBy: 'admin'
-      },
-      {
-        name: 'Premium Kaffee',
-        description: 'Frisch gebrühter Premium Kaffee',
-        price: 4.99,
-        category: 'drinks' as const,
-        isAvailable: true,
-        isPopular: true,
+        imageUrl: "",
         allergens: [],
-        ingredients: ['kaffeebohnen', 'wasser'],
-        calories: 5,
-        createdBy: 'admin'
+        ingredients: ["Premium Tabak", "Honig", "Glycerin"],
+        preparationTime: "5-10 Minuten"
       },
       {
-        name: 'Craft Bier',
-        description: 'Lokale Craft Bier Auswahl',
-        price: 7.99,
-        category: 'drinks' as const,
+        name: "Royal Mojito",
+        description: "Erfrischender Mojito mit Premium Rum",
+        price: 12.50,
+        category: "drinks",
+        isAvailable: true,
+        isPopular: true,
+        imageUrl: "",
+        allergens: [],
+        ingredients: ["Premium Rum", "Minze", "Limette", "Zucker"],
+        preparationTime: "3-5 Minuten"
+      },
+      {
+        name: "Oriental Platter",
+        description: "Auswahl orientalischer Spezialitäten",
+        price: 18.00,
+        category: "food",
         isAvailable: true,
         isPopular: false,
-        allergens: ['gluten'],
-        ingredients: ['malz', 'hopfen', 'hefe', 'wasser'],
-        calories: 150,
-        createdBy: 'admin'
-      },
-      {
-        name: 'Premium Shisha Tabak',
-        description: 'Hochwertiger aromatisierter Tabak für Shisha',
-        price: 15.99,
-        category: 'tobacco' as const,
-        isAvailable: true,
-        isPopular: true,
-        allergens: [],
-        ingredients: ['tabak', 'natürliche aromen'],
-        calories: 0,
-        createdBy: 'admin'
-      },
-      {
-        name: 'Shisha Set',
-        description: 'Komplettes Shisha Setup mit Bowl und Schläuchen',
-        price: 25.99,
-        category: 'other' as const,
-        isAvailable: true,
-        isPopular: false,
-        allergens: [],
-        ingredients: [],
-        calories: 0,
-        createdBy: 'admin'
+        imageUrl: "",
+        allergens: ["Nüsse", "Gluten"],
+        ingredients: ["Hummus", "Falafel", "Tabouleh", "Fladenbrot"],
+        preparationTime: "10-15 Minuten"
       }
     ];
 
     for (const item of sampleItems) {
-      try {
-        await this.createMenuItem(item);
-      } catch (error) {
-        console.error('Error creating sample menu item:', error);
-      }
+      await this.createMenuItem(item);
     }
+  }
+
+  // Search menu items
+  static async searchMenuItems(searchTerm: string): Promise<MenuItem[]> {
+    const items = await this.getAllMenuItems();
+    const lowerSearchTerm = searchTerm.toLowerCase();
+    
+    return items.filter(item => 
+      item.name.toLowerCase().includes(lowerSearchTerm) ||
+      item.description.toLowerCase().includes(lowerSearchTerm) ||
+      item.category.toLowerCase().includes(lowerSearchTerm)
+    );
   }
 } 

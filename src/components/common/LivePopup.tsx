@@ -206,6 +206,46 @@ const LivePopup: React.FC<LivePopupProps> = ({
     );
   };
 
+  const renderCustomPopup = (popup: Popup) => {
+    return (
+      <div className="max-w-md">
+        <div className="flex items-start gap-3">
+          <div className="flex-1 min-w-0">
+            <h3 className="font-bold text-royal-charcoal text-lg leading-tight mb-1">
+              {popup.title}
+            </h3>
+            <p className="text-royal-charcoal/80 text-sm mb-2">
+              {popup.message}
+            </p>
+
+            {/* Popup Type Badge */}
+            <div className="mt-2">
+              <span
+                className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                  popup.type === "promotion"
+                    ? "bg-green-100 text-green-800"
+                    : popup.type === "alert"
+                    ? "bg-red-100 text-red-800"
+                    : popup.type === "event"
+                    ? "bg-blue-100 text-blue-800"
+                    : "bg-gray-100 text-gray-800"
+                }`}
+              >
+                {popup.type === "promotion"
+                  ? "🏷️ Promotion"
+                  : popup.type === "alert"
+                  ? "📢 Announcement"
+                  : popup.type === "event"
+                  ? "📅 Event"
+                  : "ℹ️ Info"}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderDefaultPopup = () => (
     <div className="flex items-center gap-3">
       <Crown className="w-5 h-5 text-royal-charcoal animate-pulse" />
@@ -244,8 +284,10 @@ const LivePopup: React.FC<LivePopupProps> = ({
             <div className="flex items-start gap-3">
               {/* Content */}
               <div className="flex-1">
-                {currentPopup?.type === "event" && currentPopup.eventData
-                  ? renderEventPopup(currentPopup)
+                {currentPopup
+                  ? currentPopup.type === "event" && currentPopup.eventData
+                    ? renderEventPopup(currentPopup)
+                    : renderCustomPopup(currentPopup)
                   : renderDefaultPopup()}
               </div>
 

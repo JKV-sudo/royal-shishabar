@@ -467,7 +467,7 @@ const SpecialOfferManagement: React.FC = () => {
           <SpecialOfferForm
             offer={editingOffer}
             onClose={() => setShowForm(false)}
-            onSave={() => setShowForm(false)}
+            onSuccess={() => setShowForm(false)}
           />
         )}
       </AnimatePresence>
