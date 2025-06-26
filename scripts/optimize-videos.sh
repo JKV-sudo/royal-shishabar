@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Video Optimization Script for Vercel Hosting
+# Video Optimization Script for Vercel
 # This script helps optimize videos for free hosting on Vercel
 
 echo "🎥 Video Optimization Script for Vercel"
@@ -15,83 +15,63 @@ if ! command -v ffmpeg &> /dev/null; then
     exit 1
 fi
 
-# Create videos directory if it doesn't exist
-mkdir -p public/videos
+VIDEOS_DIR="public/videos/originals"
+OUTPUT_DIR="public/videos/optimized"
 
-echo "📁 Videos will be saved to: public/videos/"
-echo ""
+mkdir -p "$OUTPUT_DIR"
 
-# Function to optimize a video
-optimize_video() {
-    local input_file="$1"
-    local output_file="public/videos/$(basename "$input_file" | sed 's/\.[^.]*$/.mp4/')"
-    
-    echo "🔄 Optimizing: $(basename "$input_file")"
-    
-    # Check file size
-    local file_size=$(stat -f%z "$input_file" 2>/dev/null || stat -c%s "$input_file" 2>/dev/null)
-    local file_size_mb=$((file_size / 1024 / 1024))
-    
-    echo "   📊 Original size: ${file_size_mb}MB"
-    
-    if [ $file_size_mb -gt 10 ]; then
-        echo "   ⚠️  File is larger than 10MB. Compressing..."
-        
-        # Optimize for Vercel (under 10MB, good quality)
-        ffmpeg -i "$input_file" \
-            -c:v libx264 \
-            -crf 28 \
-            -preset medium \
-            -c:a aac \
-            -b:a 128k \
-            -movflags +faststart \
-            -y "$output_file"
-    else
-        echo "   ✅ File size is good. Converting to MP4..."
-        
-        # Just convert to MP4 with H.264
-        ffmpeg -i "$input_file" \
-            -c:v libx264 \
-            -preset medium \
-            -c:a aac \
-            -movflags +faststart \
-            -y "$output_file"
-    fi
-    
-    # Check final size
-    local final_size=$(stat -f%z "$output_file" 2>/dev/null || stat -c%s "$output_file" 2>/dev/null)
-    local final_size_mb=$((final_size / 1024 / 1024))
-    
-    echo "   ✅ Optimized size: ${final_size_mb}MB"
-    echo "   📁 Saved to: $output_file"
-    echo ""
-}
+echo "🎬 Starting high-quality video optimization..."
 
-# Check if files were provided as arguments
-if [ $# -eq 0 ]; then
-    echo "📋 Usage:"
-    echo "   ./scripts/optimize-videos.sh video1.mp4 video2.mov video3.avi"
-    echo ""
-    echo "📋 Or drag and drop videos:"
-    echo "   ./scripts/optimize-videos.sh \"path/to/your/video.mp4\""
-    echo ""
-    echo "📋 Example:"
-    echo "   ./scripts/optimize-videos.sh ~/Desktop/royal-atmosphere.mp4"
-    echo ""
-    exit 1
-fi
-
-# Process each video file
-for video_file in "$@"; do
-    if [ -f "$video_file" ]; then
-        optimize_video "$video_file"
-    else
-        echo "❌ File not found: $video_file"
+# Get unique videos (excluding duplicates with [1] or Kopie)
+unique_videos=()
+for video in "$VIDEOS_DIR"/*.mp4; do
+    if [ -f "$video" ]; then
+        filename=$(basename "$video")
+        if [[ "$filename" != *"[1]"* ]] && [[ "$filename" != *"Kopie"* ]]; then
+            unique_videos+=("$video")
+            echo "Found: $filename"
+        fi
     fi
 done
 
-echo "🎉 Video optimization complete!"
-echo ""
+echo "Processing ${#unique_videos[@]} videos with high quality settings..."
+
+clip_number=1
+for video in "${unique_videos[@]}"; do
+    filename=$(basename "$video")
+    output_name="clip_${clip_number}.mp4"
+    output_path="$OUTPUT_DIR/$output_name"
+    
+    echo "Processing clip $clip_number: $filename"
+    
+    # High-quality optimization settings - much better quality than before
+    ffmpeg -i "$video" \
+        -c:v libx264 \
+        -preset slow \
+        -crf 20 \
+        -c:a aac \
+        -b:a 192k \
+        -movflags +faststart \
+        -vf "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2" \
+        -y "$output_path"
+    
+    if [ $? -eq 0 ]; then
+        original_size=$(stat -f%z "$video" 2>/dev/null || stat -c%s "$video" 2>/dev/null)
+        optimized_size=$(stat -f%z "$output_path" 2>/dev/null || stat -c%s "$output_path" 2>/dev/null)
+        savings=$((original_size - optimized_size))
+        savings_percent=$((savings * 100 / original_size))
+        
+        echo "✅ clip_${clip_number}.mp4 - Saved ${savings_percent}% (${original_size} -> ${optimized_size} bytes)"
+    else
+        echo "❌ Failed to process $filename"
+    fi
+    
+    ((clip_number++))
+done
+
+echo "🎉 High-quality video optimization complete!"
+echo "📁 Optimized videos saved to: $OUTPUT_DIR"
+
 echo "📋 Next steps:"
 echo "   1. Check the optimized videos in public/videos/"
 echo "   2. Update src/config/videos.ts with your video names"

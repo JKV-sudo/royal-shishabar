@@ -42,6 +42,9 @@ export default {
         'royal-lg': '0 0 30px rgba(212, 175, 55, 0.5)',
         'royal-xl': '0 0 40px rgba(212, 175, 55, 0.6)',
       },
+      spacing: {
+        'header': '5rem', // 80px to match header height
+      },
       animation: {
         'royal-glow': 'royal-glow 3s ease-in-out infinite',
         'royal-pulse': 'royal-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
@@ -71,5 +74,20 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    function({ addUtilities }) {
+      const newUtilities = {
+        '.pt-header': {
+          paddingTop: '5rem', // 80px to match header height
+        },
+        '.mt-header': {
+          marginTop: '5rem', // 80px to match header height
+        },
+        '.top-header': {
+          top: '5rem', // 80px to match header height
+        },
+      }
+      addUtilities(newUtilities)
+    }
+  ],
 }

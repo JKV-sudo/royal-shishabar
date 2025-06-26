@@ -762,6 +762,26 @@ body {
   transition: opacity 0.5s, transform 0.5s;
 }
 
+/* Hero Section Performance Optimizations */
+.hero-section {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.hero-background-elements {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  pointer-events: none;
+}
+
+.hero-logo-container {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
 /* Responsive Video Controls */
 @media (max-width: 768px) {
   .video-control {

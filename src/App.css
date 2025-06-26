@@ -41,6 +41,27 @@
   color: #888;
 }
 
+/* Header spacing fix */
+body {
+  padding-top: 0;
+}
+
+/* Main content spacing to account for fixed header */
+main {
+  padding-top: 0;
+}
+
+/* Hero section specific spacing */
+.hero-section {
+  margin-top: 0;
+  padding-top: 0;
+}
+
+/* Ensure content doesn't get hidden behind fixed header */
+.content-with-header {
+  padding-top: 5rem; /* 80px to match header height */
+}
+
 /* Performance Optimizations */
 .royal-optimized {
   will-change: transform, opacity;

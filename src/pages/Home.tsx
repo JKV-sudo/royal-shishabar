@@ -128,7 +128,7 @@ const Home = () => {
       <SocialBar />
 
       {/* Hero Section with Video Carousel */}
-      <section className="relative h-screen flex items-center justify-center overflow-hidden pt-20">
+      <section className="relative h-screen flex items-center justify-center overflow-hidden hero-section">
         {/* Video Carousel */}
         <div className="absolute inset-0 z-0">
           <AnimatePresence mode="wait">
@@ -193,7 +193,7 @@ const Home = () => {
         </div>
 
         {/* Play/Pause Control */}
-        <div className="absolute top-4 right-4 z-30">
+        <div className="absolute top-24 right-4 z-30">
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
@@ -245,56 +245,58 @@ const Home = () => {
           </motion.div>
         </div>
 
-        {/* Animated royal elements */}
-        <div className="absolute inset-0 z-20">
+        {/* Animated royal elements - Optimized */}
+        <div className="absolute inset-0 z-10 pointer-events-none hero-background-elements">
+          {/* Background decorative elements - reduced opacity and simplified animations */}
           <motion.div
             animate={{
-              scale: [1, 1.2, 1],
-              rotate: [0, 180, 360],
+              scale: [1, 1.1, 1],
+              opacity: [0.1, 0.2, 0.1],
+            }}
+            transition={{
+              duration: 25,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+            className="absolute top-20 left-20 w-32 h-32 bg-royal-gold/10 rounded-full blur-2xl"
+          />
+          <motion.div
+            animate={{
+              scale: [1.1, 1, 1.1],
+              opacity: [0.1, 0.15, 0.1],
             }}
             transition={{
               duration: 20,
               repeat: Infinity,
-              ease: "linear",
-            }}
-            className="absolute top-20 left-20 w-32 h-32 bg-royal-gold/20 rounded-full blur-xl royal-pulse-glow"
-          />
-          <motion.div
-            animate={{
-              scale: [1.2, 1, 1.2],
-              rotate: [360, 180, 0],
-            }}
-            transition={{
-              duration: 15,
-              repeat: Infinity,
-              ease: "linear",
-            }}
-            className="absolute bottom-20 right-20 w-40 h-40 bg-royal-purple/20 rounded-full blur-xl royal-pulse-glow"
-          />
-          <motion.div
-            animate={{
-              y: [0, -20, 0],
-              opacity: [0.5, 1, 0.5],
-            }}
-            transition={{
-              duration: 4,
-              repeat: Infinity,
               ease: "easeInOut",
             }}
-            className="absolute top-1/2 left-1/4 w-16 h-16 bg-royal-gold/30 rounded-full blur-lg royal-float"
+            className="absolute bottom-20 right-20 w-40 h-40 bg-royal-purple/10 rounded-full blur-2xl"
           />
+          {/* Subtle floating elements - positioned away from logo area */}
           <motion.div
             animate={{
-              y: [0, 15, 0],
-              opacity: [0.3, 0.8, 0.3],
+              y: [0, -15, 0],
+              opacity: [0.2, 0.4, 0.2],
             }}
             transition={{
               duration: 6,
               repeat: Infinity,
               ease: "easeInOut",
-              delay: 2,
             }}
-            className="absolute top-1/3 right-1/4 w-12 h-12 bg-royal-burgundy/25 rounded-full blur-md royal-float"
+            className="absolute top-1/4 left-1/6 w-12 h-12 bg-royal-gold/20 rounded-full blur-lg"
+          />
+          <motion.div
+            animate={{
+              y: [0, 10, 0],
+              opacity: [0.15, 0.3, 0.15],
+            }}
+            transition={{
+              duration: 8,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 3,
+            }}
+            className="absolute bottom-1/4 right-1/6 w-10 h-10 bg-royal-burgundy/15 rounded-full blur-md"
           />
         </div>
 
@@ -307,25 +309,26 @@ const Home = () => {
               duration: 1,
               delay: 0.2,
             }}
-            className="mb-8"
+            className="mb-8 hero-logo-container"
           >
             <div className="relative">
               <img
                 src={RoyalShishaLogo}
                 alt="Royal Shisha Logo"
-                className="w-40 h-40 mx-auto rounded-full object-cover border-4 border-royal-gold royal-glow-more shadow-2xl"
+                className="w-40 h-40 mx-auto rounded-full object-cover border-4 border-royal-gold shadow-2xl relative z-10"
               />
+              {/* Simplified logo glow animation */}
               <motion.div
                 animate={{
-                  scale: [1, 1.1, 1],
-                  opacity: [0.5, 1, 0.5],
+                  scale: [1, 1.05, 1],
+                  opacity: [0.3, 0.6, 0.3],
                 }}
                 transition={{
-                  duration: 3,
+                  duration: 4,
                   repeat: Infinity,
                   ease: "easeInOut",
                 }}
-                className="absolute inset-0 rounded-full border-4 border-royal-gold/30 royal-glow"
+                className="absolute inset-0 rounded-full border-4 border-royal-gold/40 -z-10"
               />
             </div>
           </motion.div>
