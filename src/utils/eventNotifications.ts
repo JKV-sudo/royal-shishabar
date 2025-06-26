@@ -66,7 +66,8 @@ class EventNotificationManager {
         }
       }
     } catch (error) {
-      console.error('Error checking for upcoming event notifications:', error);
+      console.warn('Error checking for upcoming event notifications:', error);
+      // Don't throw error to prevent app crashes
     }
   }
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Event, EventFilters, EventStats } from "../../types/event";
 import { EventService } from "../../services/eventService";
 import { useAuthStore } from "../../stores/authStore";
@@ -41,7 +41,7 @@ const EventPlanner: React.FC = () => {
 
   useEffect(() => {
     applyFilters();
-  }, [events, filters]);
+  }, [applyFilters]);
 
   const loadEvents = async () => {
     try {
@@ -65,7 +65,7 @@ const EventPlanner: React.FC = () => {
     }
   };
 
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     let filtered = [...events];
 
     // Apply search filter
@@ -103,7 +103,7 @@ const EventPlanner: React.FC = () => {
     }
 
     setFilteredEvents(filtered);
-  };
+  }, [events, filters]);
 
   const handleCreateEvent = () => {
     setEditingEvent(null);
@@ -151,7 +151,10 @@ const EventPlanner: React.FC = () => {
     }
   };
 
-  const handleFilterChange = (key: keyof EventFilters, value: any) => {
+  const handleFilterChange = (
+    key: keyof EventFilters,
+    value: EventFilters[keyof EventFilters]
+  ) => {
     setFilters((prev) => ({
       ...prev,
       [key]: value,

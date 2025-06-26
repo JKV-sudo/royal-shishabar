@@ -19,6 +19,7 @@ const LivePopup: React.FC<LivePopupProps> = ({
   const [currentPopup, setCurrentPopup] = useState<Popup | null>(null);
   const [popupIndex, setPopupIndex] = useState(0);
   const [allPopups, setAllPopups] = useState<Popup[]>([]);
+  const [hasBeenClosed, setHasBeenClosed] = useState(false);
 
   useEffect(() => {
     console.log("LivePopup: showEventNotifications =", showEventNotifications);
@@ -46,12 +47,12 @@ const LivePopup: React.FC<LivePopupProps> = ({
       console.log("LivePopup: Received popups:", popups.length, popups);
       setAllPopups(popups);
 
-      if (popups.length > 0 && !isVisible) {
+      if (popups.length > 0 && !isVisible && !hasBeenClosed) {
         console.log("LivePopup: Showing first popup");
         setCurrentPopup(popups[0]);
         setPopupIndex(0);
         setIsVisible(true);
-      } else if (popups.length === 0 && !isVisible) {
+      } else if (popups.length === 0 && !isVisible && !hasBeenClosed) {
         // Show default popup if no event notifications
         console.log("LivePopup: No event popups, showing default");
         setTimeout(() => {
@@ -61,7 +62,7 @@ const LivePopup: React.FC<LivePopupProps> = ({
     });
 
     return unsubscribe;
-  }, [duration, showEventNotifications, isVisible]);
+  }, [duration, showEventNotifications]);
 
   useEffect(() => {
     if (allPopups.length > 0 && isVisible) {
@@ -77,9 +78,31 @@ const LivePopup: React.FC<LivePopupProps> = ({
   }, [allPopups, popupIndex, isVisible, duration]);
 
   const handleClose = () => {
+    console.log("LivePopup: Close button clicked");
     console.log("LivePopup: Closing popup");
     setIsVisible(false);
+    setHasBeenClosed(true);
   };
+
+  const handleCloseWithEvent = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log("LivePopup: Close button clicked with event");
+    handleClose();
+  };
+
+  // Add keyboard handler for Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isVisible) {
+        console.log("LivePopup: Escape key pressed, closing popup");
+        handleClose();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isVisible]);
 
   const handleNext = () => {
     if (allPopups.length > 1) {
@@ -102,7 +125,29 @@ const LivePopup: React.FC<LivePopupProps> = ({
     const eventData = popup.eventData;
     if (!eventData) return null;
 
-    const eventDate = eventData.date ? new Date(eventData.date) : new Date();
+    // Handle both Firestore Timestamp and Date objects
+    let eventDate: Date;
+    if (eventData.date) {
+      if (typeof eventData.date === "object" && "toDate" in eventData.date) {
+        // It's a Firestore Timestamp
+        eventDate = eventData.date.toDate();
+      } else if (eventData.date instanceof Date) {
+        // It's already a Date object
+        eventDate = eventData.date;
+      } else {
+        // It's a string or number, try to create a Date
+        eventDate = new Date(eventData.date);
+      }
+    } else {
+      eventDate = new Date();
+    }
+
+    // Validate the date
+    if (isNaN(eventDate.getTime())) {
+      console.warn("Invalid event date:", eventData.date);
+      eventDate = new Date();
+    }
+
     const now = new Date();
     const timeUntilEvent = eventDate.getTime() - now.getTime();
     const daysUntilEvent = Math.ceil(timeUntilEvent / (1000 * 60 * 60 * 24));
@@ -187,7 +232,15 @@ const LivePopup: React.FC<LivePopupProps> = ({
           transition={{ duration: 0.5, ease: "easeOut" }}
           className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50"
         >
-          <div className="bg-royal-gradient-gold text-royal-charcoal px-6 py-4 rounded-royal shadow-lg royal-glow border border-royal-gold/30 backdrop-blur-sm">
+          <div
+            className="bg-royal-gradient-gold text-royal-charcoal px-6 py-4 rounded-royal shadow-lg royal-glow border border-royal-gold/30 backdrop-blur-sm"
+            onClick={(e) => {
+              // Close popup when clicking on the background
+              if (e.target === e.currentTarget) {
+                handleClose();
+              }
+            }}
+          >
             <div className="flex items-start gap-3">
               {/* Content */}
               <div className="flex-1">
@@ -247,11 +300,12 @@ const LivePopup: React.FC<LivePopupProps> = ({
 
               {/* Close Button */}
               <button
-                onClick={handleClose}
-                className="p-1 hover:bg-royal-charcoal/20 rounded-full transition-colors flex-shrink-0"
+                onClick={handleCloseWithEvent}
+                className="p-2 hover:bg-royal-charcoal/20 rounded-full transition-colors flex-shrink-0 cursor-pointer z-10 relative"
                 title="Close notification"
+                aria-label="Close notification"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 

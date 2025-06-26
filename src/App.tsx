@@ -7,12 +7,14 @@ import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 import Events from "./pages/Events";
 import Menu from "./pages/Menu";
+import Admin from "./pages/Admin";
 import Header from "./components/layout/Header";
 import Footer from "./components/layout/Footer";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import PerformanceMonitor from "./components/common/PerformanceMonitor";
 import AdminSetupButton from "./components/common/AdminSetupButton";
 import LivePopup from "./components/common/LivePopup";
+import OfflineIndicator from "./components/common/OfflineIndicator";
 import "./utils/eventNotifications"; // Import to start notification manager
 
 function App() {
@@ -21,6 +23,7 @@ function App() {
       <AuthProvider>
         <div className="flex flex-col min-h-screen bg-royal-charcoal">
           <Header />
+          <OfflineIndicator />
           <main className="flex-grow">
             <Routes>
               <Route path="/" element={<Home />} />
@@ -31,6 +34,18 @@ function App() {
                 element={
                   <ProtectedRoute requireAuth={false} redirectTo="/">
                     <Auth />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute
+                    requireAuth={true}
+                    requireRole="admin"
+                    redirectTo="/"
+                  >
+                    <Admin />
                   </ProtectedRoute>
                 }
               />

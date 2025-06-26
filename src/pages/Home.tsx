@@ -170,8 +170,8 @@ const Home = () => {
         {/* Video Overlay with Enhanced Gradient */}
         <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/40 to-royal-purple-dark/50 z-10"></div>
 
-        {/* Video Controls */}
-        <div className="absolute top-1/2 left-4 transform -translate-y-1/2 z-30">
+        {/* Video Controls - Hidden on mobile to save space */}
+        <div className="absolute top-1/2 left-4 transform -translate-y-1/2 z-30 hidden md:block">
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
@@ -182,7 +182,7 @@ const Home = () => {
           </motion.button>
         </div>
 
-        <div className="absolute top-1/2 right-4 transform -translate-y-1/2 z-30">
+        <div className="absolute top-1/2 right-4 transform -translate-y-1/2 z-30 hidden md:block">
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
@@ -193,32 +193,32 @@ const Home = () => {
           </motion.button>
         </div>
 
-        {/* Play/Pause Control */}
-        <div className="absolute top-24 right-4 z-30">
+        {/* Play/Pause Control - Smaller on mobile */}
+        <div className="absolute top-16 md:top-24 right-4 z-30">
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={togglePlay}
-            className="bg-royal-gold/20 backdrop-blur-sm text-white p-3 rounded-full border border-royal-gold/30 hover:bg-royal-gold/30 transition-all duration-300 royal-glow"
+            className="bg-royal-gold/20 backdrop-blur-sm text-white p-2 md:p-3 rounded-full border border-royal-gold/30 hover:bg-royal-gold/30 transition-all duration-300 royal-glow"
           >
             {isPlaying ? (
-              <Pause className="w-5 h-5" />
+              <Pause className="w-4 h-4 md:w-5 md:h-5" />
             ) : (
-              <Play className="w-5 h-5" />
+              <Play className="w-4 h-4 md:w-5 md:h-5" />
             )}
           </motion.button>
         </div>
 
-        {/* Video Indicators */}
-        <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-30">
-          <div className="flex space-x-3">
+        {/* Video Indicators - Smaller and positioned better on mobile */}
+        <div className="absolute bottom-16 md:bottom-20 left-1/2 transform -translate-x-1/2 z-30">
+          <div className="flex space-x-2 md:space-x-3">
             {HERO_VIDEOS.map((_, index) => (
               <motion.button
                 key={index}
                 whileHover={{ scale: 1.2 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={() => goToVideo(index)}
-                className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                className={`w-2 h-2 md:w-3 md:h-3 rounded-full transition-all duration-300 ${
                   index === currentVideoIndex
                     ? "bg-royal-gold royal-glow"
                     : "bg-white/50 hover:bg-white/70"
@@ -228,8 +228,8 @@ const Home = () => {
           </div>
         </div>
 
-        {/* Video Info */}
-        <div className="absolute bottom-32 left-1/2 transform -translate-x-1/2 z-30 text-center">
+        {/* Video Info - Hidden on mobile to save space */}
+        <div className="absolute bottom-32 left-1/2 transform -translate-x-1/2 z-30 text-center hidden md:block">
           <motion.div
             key={currentVideoIndex}
             initial={{ opacity: 0, y: 20 }}
@@ -246,7 +246,7 @@ const Home = () => {
           </motion.div>
         </div>
 
-        {/* Animated royal elements - Optimized */}
+        {/* Animated royal elements - Reduced on mobile */}
         <div className="absolute inset-0 z-10 pointer-events-none hero-background-elements">
           {/* Background decorative elements - reduced opacity and simplified animations */}
           <motion.div
@@ -259,7 +259,7 @@ const Home = () => {
               repeat: Infinity,
               ease: "easeInOut",
             }}
-            className="absolute top-20 left-20 w-32 h-32 bg-royal-gold/10 rounded-full blur-2xl"
+            className="absolute top-20 left-20 w-16 h-16 md:w-32 md:h-32 bg-royal-gold/10 rounded-full blur-2xl"
           />
           <motion.div
             animate={{
@@ -271,9 +271,9 @@ const Home = () => {
               repeat: Infinity,
               ease: "easeInOut",
             }}
-            className="absolute bottom-20 right-20 w-40 h-40 bg-royal-purple/10 rounded-full blur-2xl"
+            className="absolute bottom-20 right-20 w-20 h-20 md:w-40 md:h-40 bg-royal-purple/10 rounded-full blur-2xl"
           />
-          {/* Subtle floating elements - positioned away from logo area */}
+          {/* Subtle floating elements - hidden on mobile */}
           <motion.div
             animate={{
               y: [0, -15, 0],
@@ -284,7 +284,7 @@ const Home = () => {
               repeat: Infinity,
               ease: "easeInOut",
             }}
-            className="absolute top-1/4 left-1/6 w-12 h-12 bg-royal-gold/20 rounded-full blur-lg"
+            className="absolute top-1/4 left-1/6 w-12 h-12 bg-royal-gold/20 rounded-full blur-lg hidden md:block"
           />
           <motion.div
             animate={{
@@ -297,12 +297,12 @@ const Home = () => {
               ease: "easeInOut",
               delay: 3,
             }}
-            className="absolute bottom-1/4 right-1/6 w-10 h-10 bg-royal-burgundy/15 rounded-full blur-md"
+            className="absolute bottom-1/4 right-1/6 w-10 h-10 bg-royal-burgundy/15 rounded-full blur-md hidden md:block"
           />
         </div>
 
-        {/* Content */}
-        <div className="relative z-30 text-center text-white px-4 max-w-4xl mx-auto">
+        {/* Content - Optimized for mobile */}
+        <div className="relative z-30 text-center text-white px-4 max-w-4xl mx-auto w-full">
           <motion.div
             initial={{ opacity: 0, y: -30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -310,13 +310,13 @@ const Home = () => {
               duration: 1,
               delay: 0.2,
             }}
-            className="mb-8 hero-logo-container"
+            className="mb-4 md:mb-8 hero-logo-container"
           >
             <div className="relative">
               <img
                 src={RoyalShishaLogo}
                 alt="Royal Shisha Logo"
-                className="w-40 h-40 mx-auto rounded-full object-cover border-4 border-royal-gold shadow-2xl relative z-10"
+                className="w-20 h-20 sm:w-24 sm:h-24 md:w-40 md:h-40 mx-auto rounded-full object-cover border-2 md:border-4 border-royal-gold shadow-2xl relative z-10"
               />
               {/* Simplified logo glow animation */}
               <motion.div
@@ -329,7 +329,7 @@ const Home = () => {
                   repeat: Infinity,
                   ease: "easeInOut",
                 }}
-                className="absolute inset-0 rounded-full border-4 border-royal-gold/40 -z-10"
+                className="absolute inset-0 rounded-full border-2 md:border-4 border-royal-gold/40 -z-10"
               />
             </div>
           </motion.div>
@@ -338,7 +338,7 @@ const Home = () => {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
-            className="text-5xl md:text-7xl font-royal font-bold mb-6 royal-text-glow"
+            className="text-2xl sm:text-3xl md:text-5xl lg:text-7xl font-royal font-bold mb-2 sm:mb-3 md:mb-6 royal-text-glow leading-tight"
           >
             Royal Shisha
           </motion.h1>
@@ -347,7 +347,7 @@ const Home = () => {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.6 }}
-            className="text-xl md:text-2xl mb-8 text-royal-cream-light font-light"
+            className="text-sm sm:text-base md:text-xl lg:text-2xl mb-3 sm:mb-4 md:mb-8 text-royal-cream-light font-light px-2 max-w-xs sm:max-w-md md:max-w-2xl mx-auto leading-relaxed"
           >
             Erleben Sie die ultimative königliche Hookah-Lounge in Deutschland
           </motion.p>
@@ -356,36 +356,36 @@ const Home = () => {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.8 }}
-            className="flex flex-col sm:flex-row gap-4 justify-center"
+            className="flex flex-col sm:flex-row gap-2 sm:gap-3 md:gap-4 justify-center items-center"
           >
             <Link
               to="/menu"
-              className="btn-royal-primary text-lg px-8 py-4 royal-hover-glow group"
+              className="btn-royal-primary text-xs sm:text-sm md:text-lg px-4 sm:px-6 md:px-8 py-2.5 sm:py-3 md:py-4 royal-hover-glow group w-full sm:w-auto max-w-xs sm:max-w-none"
             >
-              <Sparkles className="w-5 h-5 inline mr-2 group-hover:animate-spin transition-transform duration-300" />
+              <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 inline mr-1 sm:mr-2 group-hover:animate-spin transition-transform duration-300" />
               Menü erkunden
             </Link>
             <Link
               to="/events"
-              className="btn-royal-outline text-lg px-8 py-4 royal-hover-glow group"
+              className="btn-royal-outline text-xs sm:text-sm md:text-lg px-4 sm:px-6 md:px-8 py-2.5 sm:py-3 md:py-4 royal-hover-glow group w-full sm:w-auto max-w-xs sm:max-w-none"
             >
-              <Calendar className="w-5 h-5 inline mr-2 group-hover:scale-110 transition-transform duration-300" />
+              <Calendar className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 inline mr-1 sm:mr-2 group-hover:scale-110 transition-transform duration-300" />
               Events ansehen
             </Link>
           </motion.div>
         </div>
 
-        {/* Royal scroll indicator */}
+        {/* Royal scroll indicator - Smaller on mobile */}
         <motion.div
           animate={{ y: [0, 10, 0] }}
           transition={{ duration: 2, repeat: Infinity }}
-          className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-30"
+          className="absolute bottom-4 md:bottom-8 left-1/2 transform -translate-x-1/2 z-30"
         >
-          <div className="w-6 h-10 border-2 border-royal-gold rounded-full flex justify-center royal-glow cursor-pointer">
+          <div className="w-4 h-6 md:w-6 md:h-10 border-2 border-royal-gold rounded-full flex justify-center royal-glow cursor-pointer">
             <motion.div
-              animate={{ y: [0, 12, 0] }}
+              animate={{ y: [0, 8, 0] }}
               transition={{ duration: 2, repeat: Infinity }}
-              className="w-1 h-3 bg-royal-gold rounded-full mt-2"
+              className="w-0.5 h-2 md:w-1 md:h-3 bg-royal-gold rounded-full mt-1 md:mt-2"
             />
           </div>
         </motion.div>

@@ -258,8 +258,9 @@ export class EventService {
       events.sort((a, b) => a.date.getTime() - b.date.getTime());
       return events.slice(0, limitCount);
     } catch (error) {
-      console.error('Error fetching upcoming events:', error);
-      throw error;
+      console.warn('Error fetching upcoming events:', error);
+      // Return empty array instead of throwing error to prevent app crashes
+      return [];
     }
   }
 

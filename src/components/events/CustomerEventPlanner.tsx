@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Event, EventFilters } from "../../types/event";
 import { EventService } from "../../services/eventService";
 import { toast } from "react-hot-toast";
@@ -29,24 +29,7 @@ const CustomerEventPlanner: React.FC = () => {
     loadEvents();
   }, []);
 
-  useEffect(() => {
-    applyFilters();
-  }, [events, filters]);
-
-  const loadEvents = async () => {
-    try {
-      setIsLoading(true);
-      const eventsData = await EventService.getEvents({ isActive: true }); // Only load active events
-      setEvents(eventsData);
-    } catch (error) {
-      toast.error("Failed to load events");
-      console.error("Error loading events:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     let filtered = [...events];
 
     // Apply search filter
@@ -77,9 +60,29 @@ const CustomerEventPlanner: React.FC = () => {
     }
 
     setFilteredEvents(filtered);
+  }, [events, filters]);
+
+  useEffect(() => {
+    applyFilters();
+  }, [applyFilters]);
+
+  const loadEvents = async () => {
+    try {
+      setIsLoading(true);
+      const eventsData = await EventService.getEvents({ isActive: true }); // Only load active events
+      setEvents(eventsData);
+    } catch (error) {
+      toast.error("Failed to load events");
+      console.error("Error loading events:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleFilterChange = (key: keyof EventFilters, value: any) => {
+  const handleFilterChange = (
+    key: keyof EventFilters,
+    value: string | Date | undefined
+  ) => {
     setFilters((prev) => ({
       ...prev,
       [key]: value,

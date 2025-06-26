@@ -175,6 +175,16 @@ export class PopupService {
 
       querySnapshot.forEach((doc) => {
         const data = doc.data();
+        
+        // Convert eventData.date if it exists and is a Firestore Timestamp
+        let eventData = data.eventData;
+        if (eventData && eventData.date && typeof eventData.date === 'object' && 'toDate' in eventData.date) {
+          eventData = {
+            ...eventData,
+            date: eventData.date.toDate()
+          };
+        }
+
         popups.push({
           id: doc.id,
           type: data.type,
@@ -187,7 +197,7 @@ export class PopupService {
           expiresAt: data.expiresAt?.toDate(),
           priority: data.priority || 0,
           eventId: data.eventId,
-          eventData: data.eventData,
+          eventData: eventData,
         });
       });
 
@@ -228,11 +238,10 @@ export class PopupService {
   // Get all active popups
   static async getActivePopups(): Promise<Popup[]> {
     try {
+      // Simplified query to avoid composite index requirement
       const q = query(
         collection(getFirestoreDB(), this.COLLECTION),
-        where('isActive', '==', true),
-        orderBy('priority', 'desc'),
-        orderBy('createdAt', 'desc')
+        where('isActive', '==', true)
       );
 
       const querySnapshot = await getDocs(q);
@@ -240,6 +249,16 @@ export class PopupService {
 
       querySnapshot.forEach((doc) => {
         const data = doc.data();
+        
+        // Convert eventData.date if it exists and is a Firestore Timestamp
+        let eventData = data.eventData;
+        if (eventData && eventData.date && typeof eventData.date === 'object' && 'toDate' in eventData.date) {
+          eventData = {
+            ...eventData,
+            date: eventData.date.toDate()
+          };
+        }
+
         popups.push({
           id: doc.id,
           type: data.type,
@@ -252,8 +271,18 @@ export class PopupService {
           expiresAt: data.expiresAt?.toDate(),
           priority: data.priority || 0,
           eventId: data.eventId,
-          eventData: data.eventData,
+          eventData: eventData,
         });
+      });
+
+      // Sort in memory to avoid Firestore index requirements
+      popups.sort((a, b) => {
+        // First by priority (descending)
+        if (a.priority !== b.priority) {
+          return b.priority - a.priority;
+        }
+        // Then by creation date (descending)
+        return b.createdAt.getTime() - a.createdAt.getTime();
       });
 
       // Filter out expired popups
@@ -278,6 +307,16 @@ export class PopupService {
 
       querySnapshot.forEach((doc) => {
         const data = doc.data();
+        
+        // Convert eventData.date if it exists and is a Firestore Timestamp
+        let eventData = data.eventData;
+        if (eventData && eventData.date && typeof eventData.date === 'object' && 'toDate' in eventData.date) {
+          eventData = {
+            ...eventData,
+            date: eventData.date.toDate()
+          };
+        }
+
         popups.push({
           id: doc.id,
           type: data.type,
@@ -290,7 +329,7 @@ export class PopupService {
           expiresAt: data.expiresAt?.toDate(),
           priority: data.priority || 0,
           eventId: data.eventId,
-          eventData: data.eventData,
+          eventData: eventData,
         });
       });
 
@@ -304,11 +343,10 @@ export class PopupService {
   // Listen to active popups in real-time
   static onActivePopupsChange(callback: (popups: Popup[]) => void): () => void {
     console.log('PopupService: Setting up real-time listener');
+    // Simplified query to avoid composite index requirement
     const q = query(
       collection(getFirestoreDB(), this.COLLECTION),
-      where('isActive', '==', true),
-      orderBy('priority', 'desc'),
-      orderBy('createdAt', 'desc')
+      where('isActive', '==', true)
     );
 
     return onSnapshot(q, (querySnapshot) => {
@@ -318,6 +356,16 @@ export class PopupService {
       querySnapshot.forEach((doc) => {
         const data = doc.data();
         console.log('PopupService: Processing popup:', doc.id, data);
+        
+        // Convert eventData.date if it exists and is a Firestore Timestamp
+        let eventData = data.eventData;
+        if (eventData && eventData.date && typeof eventData.date === 'object' && 'toDate' in eventData.date) {
+          eventData = {
+            ...eventData,
+            date: eventData.date.toDate()
+          };
+        }
+
         popups.push({
           id: doc.id,
           type: data.type,
@@ -330,8 +378,18 @@ export class PopupService {
           expiresAt: data.expiresAt?.toDate(),
           priority: data.priority || 0,
           eventId: data.eventId,
-          eventData: data.eventData,
+          eventData: eventData,
         });
+      });
+
+      // Sort in memory to avoid Firestore index requirements
+      popups.sort((a, b) => {
+        // First by priority (descending)
+        if (a.priority !== b.priority) {
+          return b.priority - a.priority;
+        }
+        // Then by creation date (descending)
+        return b.createdAt.getTime() - a.createdAt.getTime();
       });
 
       // Filter out expired popups

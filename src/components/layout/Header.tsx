@@ -3,7 +3,15 @@ import { useState, useEffect, useRef } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import RoyalShishaLogo from "../../assets/Logo.jpeg";
-import { Menu, X, User, LogOut, Crown, ChevronDown } from "lucide-react";
+import {
+  Menu,
+  X,
+  User,
+  LogOut,
+  Crown,
+  ChevronDown,
+  Shield,
+} from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
 import toast from "react-hot-toast";
 
@@ -42,7 +50,7 @@ const Header = () => {
       await logout();
       toast.success("Successfully logged out!");
       setIsUserMenuOpen(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error("Logout failed. Please try again.");
     }
   };
@@ -131,6 +139,17 @@ const Header = () => {
                             <span>Role: {user?.role}</span>
                           </div>
 
+                          {user?.role === "admin" && (
+                            <Link
+                              to="/admin"
+                              onClick={() => setIsUserMenuOpen(false)}
+                              className="w-full flex items-center space-x-2 px-3 py-2 text-royal-cream hover:text-royal-gold hover:bg-royal-charcoal rounded-md transition-all duration-200"
+                            >
+                              <Shield className="w-4 h-4" />
+                              <span>Admin Panel</span>
+                            </Link>
+                          )}
+
                           <button
                             onClick={handleLogout}
                             className="w-full flex items-center space-x-2 px-3 py-2 text-royal-cream hover:text-royal-gold hover:bg-royal-charcoal rounded-md transition-all duration-200"
@@ -206,6 +225,18 @@ const Header = () => {
                       </div>
                     </div>
                   </div>
+
+                  {user?.role === "admin" && (
+                    <Link
+                      to="/admin"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="w-full flex items-center space-x-3 px-4 py-3 text-royal-cream hover:text-royal-gold hover:bg-royal-charcoal rounded-lg transition-all duration-200"
+                    >
+                      <Shield className="w-4 h-4" />
+                      <span>Admin Panel</span>
+                    </Link>
+                  )}
+
                   <button
                     onClick={() => {
                       handleLogout();
