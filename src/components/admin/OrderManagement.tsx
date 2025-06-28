@@ -1,19 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
-  Package,
   Clock,
+  Package,
   CheckCircle,
   XCircle,
-  Search,
   Filter,
-  Eye,
-  Edit,
-  Trash2,
   RefreshCw,
-  TrendingUp,
-  Users,
+  Trash2,
   Euro,
+  TrendingUp,
+  Eye,
 } from "lucide-react";
 import { OrderService } from "../../services/orderService";
 import {

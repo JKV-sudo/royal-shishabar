@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Crown, Star, Clock, MapPin } from "lucide-react";
 import { MenuService } from "../services/menuService";

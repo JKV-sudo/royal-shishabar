@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { X, Save, Upload, Calendar, Tag, Percent, Euro } from "lucide-react";
+import { X, Save, Upload, Calendar, Percent, Euro } from "lucide-react";
 import { SpecialOffer } from "../../types/menu";
 import { SpecialOfferService } from "../../services/specialOfferService";
 import { toast } from "react-hot-toast";
@@ -41,7 +41,6 @@ const SpecialOfferForm: React.FC<SpecialOfferFormProps> = ({
   });
 
   const [loading, setLoading] = useState(false);
-  const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
 
   useEffect(() => {
@@ -79,7 +78,6 @@ const SpecialOfferForm: React.FC<SpecialOfferFormProps> = ({
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setImageFile(file);
       const reader = new FileReader();
       reader.onload = (e) => {
         setImagePreview(e.target?.result as string);

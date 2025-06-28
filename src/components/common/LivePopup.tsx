@@ -130,13 +130,14 @@ const LivePopup: React.FC<LivePopupProps> = ({
     if (eventData.date) {
       if (typeof eventData.date === "object" && "toDate" in eventData.date) {
         // It's a Firestore Timestamp
-        eventDate = eventData.date.toDate();
+        eventDate = (eventData.date as any).toDate();
       } else if (eventData.date instanceof Date) {
         // It's already a Date object
         eventDate = eventData.date;
       } else {
         // It's a string or number, try to create a Date
-        eventDate = new Date(eventData.date);
+        eventDate =
+          (eventData.date as any)?.toDate?.() || new Date(eventData.date);
       }
     } else {
       eventDate = new Date();

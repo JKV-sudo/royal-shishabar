@@ -133,7 +133,7 @@ export class AdminService {
   }
 
   // Get recent activity (events, user registrations, etc.)
-  static async getRecentActivity(limitCount: number = 10): Promise<any[]> {
+  static async getRecentActivity(_limitCount: number = 10): Promise<any[]> {
     try {
       // This would typically combine data from multiple collections
       // For now, return mock data

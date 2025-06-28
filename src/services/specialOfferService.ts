@@ -179,7 +179,6 @@ export class SpecialOfferService {
 
   // Get a single special offer by ID
   static async getSpecialOfferById(id: string): Promise<SpecialOffer | null> {
-    const docRef = doc(getFirestoreDB(), COLLECTION_NAME, id);
     const docSnap = await getDocs(query(collection(getFirestoreDB(), COLLECTION_NAME), where("__name__", "==", id)));
     
     if (docSnap.empty) {

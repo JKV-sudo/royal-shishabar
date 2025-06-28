@@ -76,7 +76,8 @@ export class OrderService {
   static async getOrdersWithFilters(filters: OrderFilters): Promise<Order[]> {
     try {
       const db = getFirestoreDB();
-      let q = collection(db, this.collectionName);
+      const collectionRef = collection(db, this.collectionName);
+      let q: any = collectionRef;
 
       // Apply filters
       if (filters.status) {
@@ -97,7 +98,7 @@ export class OrderService {
 
       const querySnapshot = await getDocs(q);
       let orders = querySnapshot.docs.map(doc => {
-        const data = doc.data();
+        const data = doc.data() as any;
         return {
           id: doc.id,
           ...data,
@@ -264,7 +265,8 @@ export class OrderService {
     callback: (orders: Order[]) => void
   ): () => void {
     const db = getFirestoreDB();
-    let q = collection(db, this.collectionName);
+    const collectionRef = collection(db, this.collectionName);
+    let q: any = collectionRef;
 
     // Apply filters
     if (filters.status) {
@@ -283,9 +285,9 @@ export class OrderService {
     // Order by creation date (newest first)
     q = query(q, orderBy('createdAt', 'desc'));
 
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      let orders = querySnapshot.docs.map(doc => {
-        const data = doc.data();
+    const unsubscribe = onSnapshot(q, (querySnapshot: any) => {
+      let orders = querySnapshot.docs.map((doc: any) => {
+        const data = doc.data() as any;
         return {
           id: doc.id,
           ...data,
@@ -299,15 +301,15 @@ export class OrderService {
       // Apply search filter on client side
       if (filters.search) {
         const searchTerm = filters.search.toLowerCase();
-        orders = orders.filter(order =>
+        orders = orders.filter((order: any) =>
           order.customerName?.toLowerCase().includes(searchTerm) ||
-          order.items.some(item => item.name.toLowerCase().includes(searchTerm)) ||
+          order.items.some((item: any) => item.name.toLowerCase().includes(searchTerm)) ||
           order.tableNumber.toString().includes(searchTerm)
         );
       }
 
       callback(orders);
-    }, (error) => {
+    }, (error: any) => {
       console.error('Error listening to orders with filters:', error);
     });
 

@@ -168,7 +168,6 @@ export class MenuService {
 
   // Get a single menu item by ID
   static async getMenuItemById(id: string): Promise<MenuItem | null> {
-    const docRef = doc(getFirestoreDB(), COLLECTION_NAME, id);
     const docSnap = await getDocs(query(collection(getFirestoreDB(), COLLECTION_NAME), where("__name__", "==", id)));
     
     if (docSnap.empty) {

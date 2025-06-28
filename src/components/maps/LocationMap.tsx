@@ -4,12 +4,14 @@ import { MapPin, Navigation, Phone } from "lucide-react";
 
 interface LocationMapProps {
   className?: string;
-  showInfo?: boolean;
+  width?: string;
+  zoom?: number;
 }
 
 const LocationMap: React.FC<LocationMapProps> = ({
   className = "",
-  showInfo = true,
+  width = "100%",
+  zoom = 15,
 }) => {
   // Royal Shisha Bar location coordinates (Waldkraiburg, Germany)
   const location = {
@@ -21,10 +23,10 @@ const LocationMap: React.FC<LocationMapProps> = ({
 
   const mapUrl = `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${encodeURIComponent(
     location.address
-  )}&zoom=15`;
+  )}&zoom=${zoom}`;
 
   return (
-    <div className={`w-full ${className}`}>
+    <div className={`w-full ${width} ${className}`}>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}

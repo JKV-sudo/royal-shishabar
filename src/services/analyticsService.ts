@@ -2,11 +2,9 @@ import {
   collection,
   getDocs,
   query,
-  where,
   orderBy,
-  Timestamp,
   onSnapshot,
-} from 'firebase/firestore';
+} from "firebase/firestore";
 import { getFirestoreDB } from '../config/firebase';
 import { OrderService } from './orderService';
 import { EventService } from './eventService';

@@ -1,6 +1,5 @@
-import React from "react";
 import { motion } from "framer-motion";
-import { Crown, Phone, Mail, Clock, MapPin, Navigation } from "lucide-react";
+import { Crown, Phone, Mail, Clock, MapPin } from "lucide-react";
 import LocationMap from "../components/maps/LocationMap";
 
 const Contact = () => {

@@ -1,5 +1,4 @@
-import React from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Instagram, Mail, Phone } from "lucide-react";
 import { useState } from "react";
 
@@ -66,45 +65,41 @@ const SocialBar = () => {
       <div className="lg:hidden fixed bottom-6 right-6 z-50">
         <div className="relative">
           {/* Social Icons Column */}
-          <AnimatePresence>
-            {isOpen && (
-              <motion.div
-                initial={{ opacity: 0, y: 15, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 15, scale: 0.95 }}
-                transition={{ duration: 0.4, ease: "easeOut" }}
-                className="absolute bottom-16 right-0 royal-glass rounded-2xl p-3 royal-glow mb-3"
-              >
-                <div className="flex flex-col space-y-3">
-                  {socialLinks.map((social, index) => (
-                    <motion.a
-                      key={social.label}
-                      href={social.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      initial={{ opacity: 0, scale: 0.7, y: -10 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      transition={{
-                        duration: 0.5,
-                        delay: index * 0.1,
-                        ease: "easeOut",
-                      }}
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.95 }}
-                      className={`w-12 h-12 rounded-full flex items-center justify-center text-white transition-all duration-300 royal-hover-glow ${
-                        social.color.includes("from-")
-                          ? `bg-gradient-to-r ${social.color}`
-                          : social.color
-                      }`}
-                      title={social.label}
-                    >
-                      <social.icon size={20} />
-                    </motion.a>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <motion.div
+            initial={{ opacity: 0, y: 15, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 15, scale: 0.95 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="absolute bottom-16 right-0 royal-glass rounded-2xl p-3 royal-glow mb-3"
+          >
+            <div className="flex flex-col space-y-3">
+              {socialLinks.map((social, index) => (
+                <motion.a
+                  key={social.label}
+                  href={social.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  initial={{ opacity: 0, scale: 0.7, y: -10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{
+                    duration: 0.5,
+                    delay: index * 0.1,
+                    ease: "easeOut",
+                  }}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                  className={`w-12 h-12 rounded-full flex items-center justify-center text-white transition-all duration-300 royal-hover-glow ${
+                    social.color.includes("from-")
+                      ? `bg-gradient-to-r ${social.color}`
+                      : social.color
+                  }`}
+                  title={social.label}
+                >
+                  <social.icon size={20} />
+                </motion.a>
+              ))}
+            </div>
+          </motion.div>
 
           {/* Toggle Button */}
           <motion.button
