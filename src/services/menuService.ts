@@ -19,10 +19,9 @@ const COLLECTION_NAME = "menuItems";
 export class MenuService {
   // Real-time listener for menu items
   static onMenuItemsChange(callback: (items: MenuItem[]) => void) {
+    // Use a simpler query that doesn't require composite indexes
     const q = query(
       collection(getFirestoreDB(), COLLECTION_NAME),
-      where("isAvailable", "==", true),
-      orderBy("category"),
       orderBy("name")
     );
 
@@ -37,15 +36,26 @@ export class MenuService {
           updatedAt: data.updatedAt?.toDate() || new Date(),
         } as MenuItem);
       });
-      callback(items);
+      
+      // Filter available items and sort by category and name in JavaScript
+      const availableItems = items
+        .filter(item => item.isAvailable)
+        .sort((a, b) => {
+          if (a.category !== b.category) {
+            return a.category.localeCompare(b.category);
+          }
+          return a.name.localeCompare(b.name);
+        });
+      
+      callback(availableItems);
     });
   }
 
   // Get all menu items
   static async getAllMenuItems(): Promise<MenuItem[]> {
+    // Use a simpler query that doesn't require composite indexes
     const q = query(
       collection(getFirestoreDB(), COLLECTION_NAME),
-      orderBy("category"),
       orderBy("name")
     );
     const snapshot = await getDocs(q);
@@ -61,15 +71,20 @@ export class MenuService {
       } as MenuItem);
     });
     
-    return items;
+    // Sort by category and name in JavaScript
+    return items.sort((a, b) => {
+      if (a.category !== b.category) {
+        return a.category.localeCompare(b.category);
+      }
+      return a.name.localeCompare(b.name);
+    });
   }
 
   // Get available menu items
   static async getAvailableMenuItems(): Promise<MenuItem[]> {
+    // Use a simpler query that doesn't require composite indexes
     const q = query(
       collection(getFirestoreDB(), COLLECTION_NAME),
-      where("isAvailable", "==", true),
-      orderBy("category"),
       orderBy("name")
     );
     
@@ -85,15 +100,22 @@ export class MenuService {
       } as MenuItem);
     });
     
-    return items;
+    // Filter available items and sort by category and name in JavaScript
+    return items
+      .filter(item => item.isAvailable)
+      .sort((a, b) => {
+        if (a.category !== b.category) {
+          return a.category.localeCompare(b.category);
+        }
+        return a.name.localeCompare(b.name);
+      });
   }
 
   // Get menu items by category
   static async getMenuItemsByCategory(category: string): Promise<MenuItem[]> {
+    // Use a simpler query that doesn't require composite indexes
     const q = query(
       collection(getFirestoreDB(), COLLECTION_NAME),
-      where("category", "==", category),
-      where("isAvailable", "==", true),
       orderBy("name")
     );
     
@@ -109,7 +131,10 @@ export class MenuService {
       } as MenuItem);
     });
     
-    return items;
+    // Filter by category and availability, then sort by name in JavaScript
+    return items
+      .filter(item => item.category === category && item.isAvailable)
+      .sort((a, b) => a.name.localeCompare(b.name));
   }
 
   // Create a new menu item

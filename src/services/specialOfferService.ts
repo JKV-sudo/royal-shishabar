@@ -46,30 +46,36 @@ export class SpecialOfferService {
   // Real-time listener for active special offers (customer use)
   static onActiveSpecialOffersChange(callback: (offers: SpecialOffer[]) => void) {
     const now = new Date();
+    // Use a simpler query that doesn't require composite indexes
     const q = query(
       collection(getFirestoreDB(), COLLECTION_NAME),
-      where("isActive", "==", true),
-      where("endDate", ">=", now),
-      orderBy("endDate", "asc")
+      orderBy("createdAt", "desc")
     );
 
     return onSnapshot(q, (snapshot) => {
       const offers: SpecialOffer[] = [];
       snapshot.forEach((doc) => {
         const data = doc.data();
-        // Only include offers where startDate <= now
-        if (data.startDate?.toDate() <= now) {
-          offers.push({
-            id: doc.id,
-            ...data,
-            startDate: data.startDate?.toDate() || new Date(),
-            endDate: data.endDate?.toDate() || new Date(),
-            createdAt: data.createdAt?.toDate() || new Date(),
-            updatedAt: data.updatedAt?.toDate() || new Date(),
-          } as SpecialOffer);
-        }
+        offers.push({
+          id: doc.id,
+          ...data,
+          startDate: data.startDate?.toDate() || new Date(),
+          endDate: data.endDate?.toDate() || new Date(),
+          createdAt: data.createdAt?.toDate() || new Date(),
+          updatedAt: data.updatedAt?.toDate() || new Date(),
+        } as SpecialOffer);
       });
-      callback(offers);
+      
+      // Filter active offers and sort by end date in JavaScript
+      const activeOffers = offers
+        .filter(offer => 
+          offer.isActive && 
+          offer.endDate >= now && 
+          offer.startDate <= now
+        )
+        .sort((a, b) => a.endDate.getTime() - b.endDate.getTime());
+      
+      callback(activeOffers);
     });
   }
 
@@ -100,31 +106,34 @@ export class SpecialOfferService {
   // Get active special offers (customer use)
   static async getActiveSpecialOffers(): Promise<SpecialOffer[]> {
     const now = new Date();
+    // Use a simpler query that doesn't require composite indexes
     const q = query(
       collection(getFirestoreDB(), COLLECTION_NAME),
-      where("isActive", "==", true),
-      where("endDate", ">=", now),
-      orderBy("endDate", "asc")
+      orderBy("createdAt", "desc")
     );
     
     const snapshot = await getDocs(q);
     const offers: SpecialOffer[] = [];
     snapshot.forEach((doc) => {
       const data = doc.data();
-      // Only include offers where startDate <= now
-      if (data.startDate?.toDate() <= now) {
-        offers.push({
-          id: doc.id,
-          ...data,
-          startDate: data.startDate?.toDate() || new Date(),
-          endDate: data.endDate?.toDate() || new Date(),
-          createdAt: data.createdAt?.toDate() || new Date(),
-          updatedAt: data.updatedAt?.toDate() || new Date(),
-        } as SpecialOffer);
-      }
+      offers.push({
+        id: doc.id,
+        ...data,
+        startDate: data.startDate?.toDate() || new Date(),
+        endDate: data.endDate?.toDate() || new Date(),
+        createdAt: data.createdAt?.toDate() || new Date(),
+        updatedAt: data.updatedAt?.toDate() || new Date(),
+      } as SpecialOffer);
     });
     
-    return offers;
+    // Filter active offers and sort by end date in JavaScript
+    return offers
+      .filter(offer => 
+        offer.isActive && 
+        offer.endDate >= now && 
+        offer.startDate <= now
+      )
+      .sort((a, b) => a.endDate.getTime() - b.endDate.getTime());
   }
 
   // Create a new special offer
