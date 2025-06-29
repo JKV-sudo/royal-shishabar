@@ -1,12 +1,8 @@
 import {
   GoogleAuthProvider,
-  FacebookAuthProvider,
-  TwitterAuthProvider,
-  GithubAuthProvider,
   signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
-  OAuthProvider,
   User as FirebaseUser,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
@@ -29,38 +25,7 @@ export const SOCIAL_PROVIDERS: SocialProvider[] = [
     color: '#4285F4',
     provider: new GoogleAuthProvider(),
   },
-  {
-    id: 'facebook',
-    name: 'Facebook',
-    icon: '📘',
-    color: '#1877F2',
-    provider: new FacebookAuthProvider(),
-  },
-  {
-    id: 'twitter',
-    name: 'X (Twitter)',
-    icon: '🐦',
-    color: '#1DA1F2',
-    provider: new TwitterAuthProvider(),
-  },
-  {
-    id: 'github',
-    name: 'GitHub',
-    icon: '🐙',
-    color: '#333333',
-    provider: new GithubAuthProvider(),
-  },
-  {
-    id: 'apple',
-    name: 'Apple',
-    icon: '🍎',
-    color: '#000000',
-    provider: new OAuthProvider('apple.com'),
-  },
 ];
-
-// Custom Instagram OAuth (requires additional setup)
-export const INSTAGRAM_PROVIDER = new OAuthProvider('instagram.com');
 
 export class SocialAuthService {
   // Sign in with Google
@@ -160,21 +125,6 @@ export class SocialAuthService {
     }
   }
 
-  // Sign in with Instagram (custom implementation)
-  static async signInWithInstagram(): Promise<User> {
-    try {
-      const auth = getFirebaseAuth();
-      // Configure Instagram provider
-      INSTAGRAM_PROVIDER.addScope('user_profile');
-      INSTAGRAM_PROVIDER.addScope('user_media');
-
-      const userCredential = await signInWithPopup(auth, INSTAGRAM_PROVIDER);
-      return await this.handleSocialSignIn(userCredential.user, 'instagram');
-    } catch (error: any) {
-      throw new Error(this.getSocialErrorMessage(error.code, 'instagram'));
-    }
-  }
-
   // Handle social sign-in result
   private static async handleSocialSignIn(firebaseUser: FirebaseUser, providerId: string): Promise<User> {
     const db = getFirestoreDB();
@@ -222,26 +172,9 @@ export class SocialAuthService {
 
   // Configure provider with appropriate scopes
   private static configureProvider(provider: any, providerId: string): void {
-    switch (providerId) {
-      case 'google':
-        provider.addScope('profile');
-        provider.addScope('email');
-        break;
-      case 'facebook':
-        provider.addScope('email');
-        provider.addScope('public_profile');
-        break;
-      case 'twitter':
-        // Twitter provider doesn't need additional scopes
-        break;
-      case 'github':
-        provider.addScope('user:email');
-        provider.addScope('read:user');
-        break;
-      case 'apple':
-        provider.addScope('email');
-        provider.addScope('name');
-        break;
+    if (providerId === 'google') {
+      provider.addScope('profile');
+      provider.addScope('email');
     }
   }
 
