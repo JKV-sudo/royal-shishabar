@@ -1,13 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Crown,
-  Gift,
-  Star,
-  Phone,
-  CheckCircle,
-  AlertCircle,
-} from "lucide-react";
+import { Crown, Gift, Star, Phone, CheckCircle } from "lucide-react";
 import { LoyaltyService } from "../../services/loyaltyService";
 import { LoyaltyCard as LoyaltyCardType } from "../../types/loyalty";
 import { CartItem } from "../../types/order";
@@ -263,7 +256,7 @@ const LoyaltyOrderIntegration: React.FC<LoyaltyOrderIntegrationProps> = ({
                   disabled={loading || !phone.trim()}
                   className="px-4 py-2 bg-royal-gold text-royal-charcoal rounded-royal hover:bg-royal-gold/90 disabled:opacity-50"
                 >
-                  {loading ? <LoadingSpinner size="small" /> : "Suchen"}
+                  {loading ? <LoadingSpinner size="sm" /> : "Suchen"}
                 </button>
               </div>
 
@@ -296,7 +289,7 @@ const LoyaltyOrderIntegration: React.FC<LoyaltyOrderIntegrationProps> = ({
                   disabled={loading || !phone.trim() || !name.trim()}
                   className="flex-1 bg-royal-gold text-royal-charcoal py-2 rounded-royal hover:bg-royal-gold/90 disabled:opacity-50"
                 >
-                  {loading ? <LoadingSpinner size="small" /> : "Erstellen"}
+                  {loading ? <LoadingSpinner size="sm" /> : "Erstellen"}
                 </button>
                 <button
                   onClick={() => setShowLoyaltyForm(false)}

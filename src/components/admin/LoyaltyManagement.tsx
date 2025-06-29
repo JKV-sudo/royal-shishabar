@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Crown,
@@ -10,7 +10,6 @@ import {
   Phone,
   Calendar,
   Eye,
-  Plus,
 } from "lucide-react";
 import { LoyaltyService } from "../../services/loyaltyService";
 import { LoyaltyCard, LoyaltyTransaction } from "../../types/loyalty";
@@ -27,11 +26,9 @@ interface LoyaltyStats {
 }
 
 const LoyaltyManagement = () => {
-  const [loyaltyCards, setLoyaltyCards] = useState<LoyaltyCard[]>([]);
   const [selectedCard, setSelectedCard] = useState<LoyaltyCard | null>(null);
   const [transactions, setTransactions] = useState<LoyaltyTransaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [showTransactions, setShowTransactions] = useState(false);
   const [stats, setStats] = useState<LoyaltyStats>({
@@ -113,12 +110,6 @@ const LoyaltyManagement = () => {
         return <Star className="w-4 h-4 text-gray-600" />;
     }
   };
-
-  const filteredCards = loyaltyCards.filter(
-    (card) =>
-      card.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      card.customerPhone.includes(searchTerm)
-  );
 
   if (loading) {
     return (

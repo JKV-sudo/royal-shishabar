@@ -3,14 +3,12 @@ import {
   addDoc,
   getDocs,
   getDoc,
-  updateDoc,
   doc,
   query,
   where,
   orderBy,
   serverTimestamp,
   runTransaction,
-  Timestamp,
 } from 'firebase/firestore';
 import { getFirestoreDB } from '../config/firebase';
 import { LoyaltyCard, LoyaltyTransaction, LOYALTY_CONFIG } from '../types/loyalty';
@@ -161,9 +159,9 @@ export class LoyaltyService {
         }
 
         return {
-          id: loyaltyCardId,
           ...currentCard,
           ...updatedCard,
+          id: loyaltyCardId,
         } as LoyaltyCard;
       });
     } catch (error) {
@@ -221,9 +219,9 @@ export class LoyaltyService {
         });
 
         return {
-          id: loyaltyCardId,
           ...currentCard,
           ...updatedCard,
+          id: loyaltyCardId,
         } as LoyaltyCard;
       });
     } catch (error) {

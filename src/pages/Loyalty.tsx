@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Crown, Phone, History, Gift, Star, ArrowLeft } from "lucide-react";
+import { Crown, History, Gift, Star, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { LoyaltyService } from "../services/loyaltyService";
 import {

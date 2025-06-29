@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { ShoppingCart, Plus, Check } from "lucide-react";
+import { ShoppingCart, Check } from "lucide-react";
 import { useCart } from "../../contexts/CartContext";
 import { MenuItem } from "../../types/menu";
 import { CartItem } from "../../types/order";

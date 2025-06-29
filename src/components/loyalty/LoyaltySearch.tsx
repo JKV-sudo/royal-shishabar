@@ -175,7 +175,7 @@ const LoyaltySearch: React.FC<LoyaltySearchProps> = ({
                   className="flex-1 bg-royal-gold text-royal-charcoal py-2 px-4 rounded-royal font-medium hover:bg-royal-gold/90 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
                 >
                   {loading ? (
-                    <LoadingSpinner size="small" />
+                    <LoadingSpinner size="sm" />
                   ) : (
                     <Search className="w-4 h-4" />
                   )}
@@ -201,7 +201,7 @@ const LoyaltySearch: React.FC<LoyaltySearchProps> = ({
                   className="flex-1 bg-green-600 text-white py-2 px-4 rounded-royal font-medium hover:bg-green-700 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
                 >
                   {loading ? (
-                    <LoadingSpinner size="small" />
+                    <LoadingSpinner size="sm" />
                   ) : (
                     <Plus className="w-4 h-4" />
                   )}
