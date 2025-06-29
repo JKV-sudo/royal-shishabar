@@ -28,6 +28,8 @@ const Header = () => {
   const navLinks = [
     { name: "Startseite", path: "/" },
     { name: "Menü", path: "/menu" },
+    { name: "Reservierungen", path: "/reservations" },
+    { name: "Stempelpass", path: "/loyalty" },
     { name: "Events", path: "/events" },
     { name: "Kontakt", path: "/contact" },
   ];

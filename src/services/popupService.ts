@@ -394,6 +394,13 @@ export class PopupService {
 
       // Filter out expired popups
       const now = new Date();
+      console.log('PopupService: Current time:', now);
+      
+      // Debug each popup's expiration
+      popups.forEach(popup => {
+        console.log('PopupService: Popup', popup.id, 'expires at:', popup.expiresAt, 'is expired:', popup.expiresAt ? popup.expiresAt <= now : false);
+      });
+      
       const activePopups = popups.filter(popup => !popup.expiresAt || popup.expiresAt > now);
       console.log('PopupService: Filtered to', activePopups.length, 'active popups');
       
@@ -426,6 +433,26 @@ export class PopupService {
     };
 
     return this.createPopup(samplePopup);
+  }
+
+  // Fix expired popups by extending their expiration date
+  static async fixExpiredPopups(): Promise<void> {
+    try {
+      const allPopups = await this.getAllPopups();
+      const now = new Date();
+      const oneWeekFromNow = new Date(now.getTime() + (7 * 24 * 60 * 60 * 1000));
+
+      for (const popup of allPopups) {
+        if (popup.isActive && popup.expiresAt && popup.expiresAt <= now) {
+          console.log('PopupService: Extending expiration for popup:', popup.id, popup.title);
+          await this.updatePopup(popup.id!, {
+            expiresAt: oneWeekFromNow
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fixing expired popups:', error);
+    }
   }
 
   // Get all popups for admin panel

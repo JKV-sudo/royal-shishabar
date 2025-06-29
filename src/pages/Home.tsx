@@ -13,6 +13,7 @@ import {
   Play,
   Pause,
   Music,
+  Gift,
 } from "lucide-react";
 import SocialBar from "../components/common/SocialBar";
 import CountUp from "../components/common/CountUp";
@@ -118,7 +119,7 @@ const Home = () => {
 
   const stats = [
     { number: 50, suffix: "+", label: "Premium-Aromen" },
-    { number: 1000, suffix: "+", label: "Königliche Gäste" },
+    { number: 100, suffix: "+", label: "Königliche Gäste" },
     { number: 5, suffix: "", label: "Sterne-Bewertung" },
     { number: 24, suffix: "/7", label: "Königlicher Service" },
   ];
@@ -360,6 +361,13 @@ const Home = () => {
             >
               Events & Reservierungen
             </Link>
+            <Link
+              to="/loyalty"
+              className="px-8 py-4 bg-gradient-to-r from-purple-600 to-purple-800 text-white font-royal font-bold rounded-royal hover:from-purple-700 hover:to-purple-900 transition-all duration-300 royal-glow hover:scale-105 transform flex items-center space-x-2"
+            >
+              <Crown className="w-5 h-5" />
+              <span>Stempelpass</span>
+            </Link>
           </motion.div>
 
           {/* Stats Section - Responsive */}
@@ -385,6 +393,102 @@ const Home = () => {
                 </div>
               </div>
             ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Loyalty Program Section */}
+      <section className="py-16 md:py-24 bg-gradient-to-br from-purple-900 to-royal-purple-dark">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
+            className="text-center mb-12 md:mb-16"
+          >
+            <div className="flex items-center justify-center space-x-3 mb-4">
+              <Crown className="w-12 h-12 text-royal-gold" />
+              <h2 className="text-3xl md:text-5xl font-royal font-bold text-white">
+                Royal Stempelpass
+              </h2>
+            </div>
+            <p className="text-lg md:text-xl text-royal-cream-light max-w-3xl mx-auto">
+              Sammeln Sie bei jeder Shisha-Bestellung Stempel und erhalten Sie
+              nach 10 Stempeln eine gratis Shisha
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              viewport={{ once: true }}
+              className="text-center p-6 bg-white/10 backdrop-blur-sm rounded-royal border border-white/20"
+            >
+              <div className="w-16 h-16 mx-auto mb-4 bg-royal-gold/20 rounded-full flex items-center justify-center">
+                <Star className="w-8 h-8 text-royal-gold" />
+              </div>
+              <h3 className="text-xl font-royal font-bold text-white mb-3">
+                Sammeln
+              </h3>
+              <p className="text-royal-cream-light leading-relaxed">
+                1 Stempel pro bestellter Shisha
+              </p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              viewport={{ once: true }}
+              className="text-center p-6 bg-white/10 backdrop-blur-sm rounded-royal border border-white/20"
+            >
+              <div className="w-16 h-16 mx-auto mb-4 bg-royal-gold/20 rounded-full flex items-center justify-center">
+                <Crown className="w-8 h-8 text-royal-gold" />
+              </div>
+              <h3 className="text-xl font-royal font-bold text-white mb-3">
+                10 Stempel = Belohnung
+              </h3>
+              <p className="text-royal-cream-light leading-relaxed">
+                Eine gratis Shisha Ihrer Wahl
+              </p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              viewport={{ once: true }}
+              className="text-center p-6 bg-white/10 backdrop-blur-sm rounded-royal border border-white/20"
+            >
+              <div className="w-16 h-16 mx-auto mb-4 bg-royal-gold/20 rounded-full flex items-center justify-center">
+                <Gift className="w-8 h-8 text-royal-gold" />
+              </div>
+              <h3 className="text-xl font-royal font-bold text-white mb-3">
+                Einlösen
+              </h3>
+              <p className="text-royal-cream-light leading-relaxed">
+                Einfach bei der nächsten Bestellung verwenden
+              </p>
+            </motion.div>
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            viewport={{ once: true }}
+            className="text-center"
+          >
+            <Link
+              to="/loyalty"
+              className="inline-flex items-center space-x-2 px-8 py-4 bg-royal-gold text-royal-charcoal font-royal font-bold rounded-royal hover:bg-royal-gold/90 transition-all duration-300 royal-glow hover:scale-105 transform"
+            >
+              <Crown className="w-5 h-5" />
+              <span>Stempelpass erstellen</span>
+            </Link>
           </motion.div>
         </div>
       </section>

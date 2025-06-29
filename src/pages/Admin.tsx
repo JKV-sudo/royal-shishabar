@@ -9,6 +9,8 @@ import MenuManagement from "../components/admin/MenuManagement";
 import SpecialOfferManagement from "../components/admin/SpecialOfferManagement";
 import OrderManagement from "../components/admin/OrderManagement";
 import PopupManagement from "../components/admin/PopupManagement";
+import ReservationManagement from "../components/admin/ReservationManagement";
+import LoyaltyManagement from "../components/admin/LoyaltyManagement";
 import { motion } from "framer-motion";
 import {
   Users,
@@ -29,6 +31,7 @@ import {
   Tag,
   Package,
   MessageSquare,
+  CalendarCheck,
 } from "lucide-react";
 
 const Admin: React.FC = () => {
@@ -149,8 +152,10 @@ const Admin: React.FC = () => {
 
   const tabs = [
     { id: "dashboard", name: "Dashboard", icon: BarChart3 },
+    { id: "reservations", name: "Reservations", icon: CalendarCheck },
     { id: "events", name: "Events", icon: Calendar },
     { id: "users", name: "Users", icon: Users },
+    { id: "loyalty", name: "Stempelpass", icon: Crown },
     { id: "analytics", name: "Analytics", icon: TrendingUp },
     { id: "settings", name: "Settings", icon: Settings },
     { id: "menu", name: "Menu", icon: Utensils },
@@ -659,10 +664,14 @@ const Admin: React.FC = () => {
     switch (activeTab) {
       case "dashboard":
         return renderDashboard();
+      case "reservations":
+        return <ReservationManagement />;
       case "events":
         return renderEvents();
       case "users":
         return renderUsers();
+      case "loyalty":
+        return <LoyaltyManagement />;
       case "analytics":
         return renderAnalytics();
       case "settings":

@@ -1,17 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Crown, X, Calendar, Clock, MapPin, Star } from "lucide-react";
+import { X, Calendar, Clock, MapPin, Star } from "lucide-react";
 import { PopupService, Popup } from "../../services/popupService";
 import { format } from "date-fns";
 
 interface LivePopupProps {
-  message?: string;
   duration?: number;
   showEventNotifications?: boolean;
 }
 
 const LivePopup: React.FC<LivePopupProps> = ({
-  message = "🎉 Special Event Tonight! Live DJ & Premium Hookah",
   duration = 8000,
   showEventNotifications = true,
 }) => {
@@ -25,20 +23,8 @@ const LivePopup: React.FC<LivePopupProps> = ({
     console.log("LivePopup: showEventNotifications =", showEventNotifications);
 
     if (!showEventNotifications) {
-      // Show default popup
-      console.log("LivePopup: Showing default popup");
-      const showTimer = setTimeout(() => {
-        setIsVisible(true);
-      }, 2000);
-
-      const hideTimer = setTimeout(() => {
-        setIsVisible(false);
-      }, 2000 + duration);
-
-      return () => {
-        clearTimeout(showTimer);
-        clearTimeout(hideTimer);
-      };
+      // Don't show any popup if event notifications are disabled
+      return;
     }
 
     // Listen to popup changes
@@ -52,17 +38,16 @@ const LivePopup: React.FC<LivePopupProps> = ({
         setCurrentPopup(popups[0]);
         setPopupIndex(0);
         setIsVisible(true);
-      } else if (popups.length === 0 && !isVisible && !hasBeenClosed) {
-        // Show default popup if no event notifications
-        console.log("LivePopup: No event popups, showing default");
-        setTimeout(() => {
-          setIsVisible(true);
-        }, 2000);
+      } else if (popups.length === 0 && isVisible) {
+        // Hide popup if no active popups remain
+        console.log("LivePopup: No active popups, hiding popup");
+        setIsVisible(false);
+        setCurrentPopup(null);
       }
     });
 
     return unsubscribe;
-  }, [duration, showEventNotifications]);
+  }, [duration, showEventNotifications, isVisible, hasBeenClosed]);
 
   useEffect(() => {
     if (allPopups.length > 0 && isVisible) {
@@ -154,7 +139,7 @@ const LivePopup: React.FC<LivePopupProps> = ({
     const daysUntilEvent = Math.ceil(timeUntilEvent / (1000 * 60 * 60 * 24));
 
     return (
-      <div className="max-w-md">
+      <div className="w-full">
         <div className="flex items-start gap-3">
           {eventData.imageUrl && (
             <img
@@ -209,7 +194,7 @@ const LivePopup: React.FC<LivePopupProps> = ({
 
   const renderCustomPopup = (popup: Popup) => {
     return (
-      <div className="max-w-md">
+      <div className="w-full">
         <div className="flex items-start gap-3">
           <div className="flex-1 min-w-0">
             <h3 className="font-bold text-royal-charcoal text-lg leading-tight mb-1">
@@ -247,15 +232,6 @@ const LivePopup: React.FC<LivePopupProps> = ({
     );
   };
 
-  const renderDefaultPopup = () => (
-    <div className="flex items-center gap-3">
-      <Crown className="w-5 h-5 text-royal-charcoal animate-pulse" />
-      <span className="font-semibold text-sm md:text-base text-royal-charcoal">
-        {message}
-      </span>
-    </div>
-  );
-
   console.log(
     "LivePopup: Rendering, isVisible =",
     isVisible,
@@ -265,16 +241,16 @@ const LivePopup: React.FC<LivePopupProps> = ({
 
   return (
     <AnimatePresence>
-      {isVisible && (
+      {isVisible && currentPopup && (
         <motion.div
-          initial={{ opacity: 0, y: -100, scale: 0.8 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -100, scale: 0.8 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-          className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50"
+          initial={{ opacity: 0, x: 100, scale: 0.9 }}
+          animate={{ opacity: 1, x: 0, scale: 1 }}
+          exit={{ opacity: 0, x: 100, scale: 0.9 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+          className="fixed top-20 right-4 md:top-6 md:right-6 z-40 max-w-sm md:max-w-md"
         >
           <div
-            className="bg-royal-gradient-gold text-royal-charcoal px-6 py-4 rounded-royal shadow-lg royal-glow border border-royal-gold/30 backdrop-blur-sm"
+            className="bg-royal-gradient-gold text-royal-charcoal px-4 py-3 md:px-6 md:py-4 rounded-royal shadow-lg royal-glow border border-royal-gold/30 backdrop-blur-sm w-full"
             onClick={(e) => {
               // Close popup when clicking on the background
               if (e.target === e.currentTarget) {
@@ -285,11 +261,10 @@ const LivePopup: React.FC<LivePopupProps> = ({
             <div className="flex items-start gap-3">
               {/* Content */}
               <div className="flex-1">
-                {currentPopup
-                  ? currentPopup.type === "event" && currentPopup.eventData
+                {currentPopup &&
+                  (currentPopup.type === "event" && currentPopup.eventData
                     ? renderEventPopup(currentPopup)
-                    : renderCustomPopup(currentPopup)
-                  : renderDefaultPopup()}
+                    : renderCustomPopup(currentPopup))}
               </div>
 
               {/* Navigation Controls */}

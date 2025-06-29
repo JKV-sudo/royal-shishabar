@@ -15,6 +15,7 @@ import {
 } from 'firebase/firestore';
 import { getFirestoreDB } from '../config/firebase';
 import { Order, OrderStatus, OrderStats, OrderFilters } from '../types/order';
+import { LoyaltyService } from './loyaltyService';
 
 export class OrderService {
   private static collectionName = 'orders';
@@ -164,8 +165,50 @@ export class OrderService {
       });
 
       await updateDoc(docRef, updateData);
+
+      // If order is confirmed by staff, add loyalty stamps
+      if (status === 'confirmed') {
+        try {
+          await this.addLoyaltyStampsForOrder(id);
+        } catch (loyaltyError) {
+          console.error('Error adding loyalty stamps:', loyaltyError);
+          // Don't throw here - order status update was successful
+        }
+      }
     } catch (error) {
       console.error('Error updating order status:', error);
+      throw error;
+    }
+  }
+
+  // Add loyalty stamps for confirmed order
+  private static async addLoyaltyStampsForOrder(orderId: string): Promise<void> {
+    try {
+      const order = await this.getOrderById(orderId);
+      if (!order || !order.customerPhone || !order.customerName) {
+        console.log('Order missing customer info for loyalty stamps');
+        return;
+      }
+
+      // Count shisha items in the order
+      const shishaCount = LoyaltyService.countShishaItems(order.items);
+      if (shishaCount === 0) {
+        console.log('No shisha items in order for loyalty stamps');
+        return;
+      }
+
+      // Get or create loyalty card
+      const loyaltyCard = await LoyaltyService.getOrCreateLoyaltyCard(
+        order.customerPhone,
+        order.customerName
+      );
+
+      // Add stamps for shisha items
+      await LoyaltyService.addStamps(loyaltyCard.id, orderId, shishaCount);
+      
+      console.log(`Added ${shishaCount} loyalty stamps for order ${orderId}`);
+    } catch (error) {
+      console.error('Error processing loyalty stamps:', error);
       throw error;
     }
   }

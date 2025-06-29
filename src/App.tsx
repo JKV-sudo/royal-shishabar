@@ -9,6 +9,8 @@ import Events from "./pages/Events";
 import Menu from "./pages/Menu";
 import Contact from "./pages/Contact";
 import Admin from "./pages/Admin";
+import Reservations from "./pages/Reservations";
+import Loyalty from "./pages/Loyalty";
 import Header from "./components/layout/Header";
 import Footer from "./components/layout/Footer";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
@@ -17,8 +19,15 @@ import AdminSetupButton from "./components/common/AdminSetupButton";
 import LivePopup from "./components/common/LivePopup";
 import OfflineIndicator from "./components/common/OfflineIndicator";
 import "./utils/eventNotifications"; // Import to start notification manager
+import { useEffect } from "react";
+import { autoInitializeReservationData } from "./utils/initializeReservationData";
 
 function App() {
+  useEffect(() => {
+    // Initialize reservation data on app start
+    autoInitializeReservationData();
+  }, []);
+
   return (
     <Router>
       <AuthProvider>
@@ -32,6 +41,8 @@ function App() {
                 <Route path="/menu" element={<Menu />} />
                 <Route path="/events" element={<Events />} />
                 <Route path="/contact" element={<Contact />} />
+                <Route path="/reservations" element={<Reservations />} />
+                <Route path="/loyalty" element={<Loyalty />} />
                 <Route
                   path="/auth"
                   element={
