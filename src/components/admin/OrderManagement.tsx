@@ -11,6 +11,9 @@ import {
   Euro,
   TrendingUp,
   Eye,
+  Crown,
+  Shield,
+  Gift,
 } from "lucide-react";
 import { OrderService } from "../../services/orderService";
 import {
@@ -123,6 +126,18 @@ const OrderManagement: React.FC = () => {
       cancelled: "Storniert",
     };
     return statusMap[status];
+  };
+
+  const verifyLoyaltyDiscount = async (orderId: string) => {
+    try {
+      await OrderService.verifyLoyaltyDiscount(orderId);
+      console.log("Loyalty Rabatt bestätigt");
+      loadOrders();
+      loadStats();
+    } catch (error) {
+      console.error("Error verifying loyalty discount:", error);
+      alert("Fehler beim Bestätigen des Loyalty Rabatts");
+    }
   };
 
   if (loading && orders.length === 0) {
@@ -384,9 +399,20 @@ const OrderManagement: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="font-bold text-royal-gold">
-                        {order.totalAmount.toFixed(2)}€
-                      </span>
+                      <div className="flex items-center space-x-2">
+                        <span className="font-bold text-royal-gold">
+                          {order.totalAmount.toFixed(2)}€
+                        </span>
+                        {/* Loyalty Badge */}
+                        {order.loyaltyDiscount && (
+                          <div className="flex items-center space-x-1 bg-royal-purple text-white px-2 py-1 rounded-full text-xs">
+                            <Crown className="w-3 h-3" />
+                            <span>
+                              -{order.loyaltyDiscount.amount.toFixed(2)}€
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <span
@@ -522,6 +548,85 @@ const OrderManagement: React.FC = () => {
                 </div>
               </div>
 
+              {/* Loyalty Discount Information */}
+              {selectedOrder.loyaltyDiscount && (
+                <div className="bg-royal-purple/10 rounded-royal p-4 border border-royal-purple/30">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center space-x-2">
+                      <Crown className="w-5 h-5 text-royal-purple" />
+                      <span className="font-medium text-royal-purple">
+                        Loyalty Rabatt angewendet
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-1 bg-royal-purple text-white px-2 py-1 rounded-full text-xs">
+                      <Gift className="w-3 h-3" />
+                      <span>Loyalty Order</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-royal-purple/70">Rabattbetrag</p>
+                      <p className="font-bold text-royal-purple">
+                        -{selectedOrder.loyaltyDiscount.amount.toFixed(2)}€
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-royal-purple/70">Gratis Shishas</p>
+                      <p className="font-bold text-royal-purple">
+                        {selectedOrder.loyaltyDiscount.freeShishasRedeemed}x
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-royal-purple/70">Kunde</p>
+                      <p className="font-bold text-royal-purple">
+                        {selectedOrder.loyaltyDiscount.customerPhone}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-royal-purple/70">Bestätigt</p>
+                      <p
+                        className={`font-bold ${
+                          selectedOrder.loyaltyDiscount.isVerified
+                            ? "text-green-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        {selectedOrder.loyaltyDiscount.isVerified
+                          ? "✅ Ja"
+                          : "❌ Nein"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 bg-royal-purple/5 rounded-royal p-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <Shield className="w-4 h-4 text-royal-purple" />
+                        <span className="text-sm font-medium text-royal-purple">
+                          Bestätigungscode:
+                        </span>
+                      </div>
+                      {!selectedOrder.loyaltyDiscount.isVerified && (
+                        <button
+                          onClick={() =>
+                            verifyLoyaltyDiscount(selectedOrder.id)
+                          }
+                          className="px-3 py-1 bg-royal-purple text-white rounded-royal text-xs hover:bg-royal-purple-light"
+                        >
+                          Bestätigen
+                        </button>
+                      )}
+                    </div>
+                    <div className="mt-2 text-center">
+                      <span className="text-lg font-bold text-royal-purple bg-white px-3 py-1 rounded border-2 border-royal-purple font-mono">
+                        {selectedOrder.loyaltyDiscount.verificationCode}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Special Instructions */}
               {selectedOrder.specialInstructions && (
                 <div>
@@ -546,9 +651,20 @@ const OrderManagement: React.FC = () => {
                       className="flex items-center justify-between p-3 bg-royal-charcoal/5 rounded-royal"
                     >
                       <div className="flex-1">
-                        <p className="font-semibold text-royal-charcoal">
-                          {item.name}
-                        </p>
+                        <div className="flex items-center space-x-2">
+                          <p className="font-semibold text-royal-charcoal">
+                            {item.name}
+                          </p>
+                          {/* Loyalty Badge for Shisha Items */}
+                          {selectedOrder.loyaltyDiscount &&
+                            (item.category.toLowerCase() === "shisha" ||
+                              item.category.toLowerCase() === "tobacco") && (
+                              <div className="flex items-center space-x-1 bg-royal-purple text-white px-2 py-1 rounded-full text-xs">
+                                <Crown className="w-3 h-3" />
+                                <span>Loyalty</span>
+                              </div>
+                            )}
+                        </div>
                         <p className="text-sm text-royal-charcoal/70">
                           {item.category}
                         </p>

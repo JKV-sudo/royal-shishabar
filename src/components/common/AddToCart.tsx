@@ -1,9 +1,8 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { ShoppingCart, Check } from "lucide-react";
+import { Plus, Minus, ShoppingCart, Crown } from "lucide-react";
 import { useCart } from "../../contexts/CartContext";
 import { MenuItem } from "../../types/menu";
-import { CartItem } from "../../types/order";
 import toast from "react-hot-toast";
 
 interface AddToCartProps {
@@ -13,40 +12,64 @@ interface AddToCartProps {
 
 const AddToCart: React.FC<AddToCartProps> = ({ item, onAdd }) => {
   const { addItem } = useCart();
-  const [isAdded, setIsAdded] = useState(false);
+  const [quantity, setQuantity] = useState(1);
+  const [specialInstructions, setSpecialInstructions] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
 
-  const handleAddToCart = () => {
+  // Check if this item is loyalty eligible
+  const isLoyaltyEligible =
+    item.category.toLowerCase() === "shisha" ||
+    item.category.toLowerCase() === "tobacco";
+
+  const handleQuantityChange = (newQuantity: number) => {
+    if (newQuantity >= 1 && newQuantity <= 10) {
+      setQuantity(newQuantity);
+    }
+  };
+
+  const handleAddToCart = async () => {
+    if (!item.isAvailable) {
+      toast.error("Dieses Artikel ist derzeit nicht verfügbar");
+      return;
+    }
+
+    setIsAdding(true);
+
     try {
-      // Convert MenuItem to CartItem
-      const cartItem: CartItem = {
-        id: `${item.id}-${Date.now()}`, // Unique ID for cart item
+      const cartItem = {
+        id: `${item.id}-${Date.now()}`,
         menuItemId: item.id,
         name: item.name,
         price: item.price,
-        quantity: 1,
+        quantity,
         category: item.category,
         imageUrl: item.imageUrl,
+        specialInstructions: specialInstructions.trim() || undefined,
       };
 
-      // Add to cart
       addItem(cartItem);
 
       // Visual feedback
-      setIsAdded(true);
-      toast.success(`${item.name} zum Warenkorb hinzugefügt!`);
+      toast.success(
+        <div className="flex items-center space-x-2">
+          <ShoppingCart className="w-4 h-4" />
+          <span>{item.name} wurde zum Warenkorb hinzugefügt!</span>
+        </div>
+      );
+
+      // Reset form
+      setQuantity(1);
+      setSpecialInstructions("");
 
       // Call optional callback
       if (onAdd) {
         onAdd();
       }
-
-      // Reset visual feedback after 2 seconds
-      setTimeout(() => {
-        setIsAdded(false);
-      }, 2000);
     } catch (error) {
-      console.error("Error adding item to cart:", error);
+      console.error("Error adding to cart:", error);
       toast.error("Fehler beim Hinzufügen zum Warenkorb");
+    } finally {
+      setIsAdding(false);
     }
   };
 
@@ -63,29 +86,76 @@ const AddToCart: React.FC<AddToCartProps> = ({ item, onAdd }) => {
   }
 
   return (
-    <motion.button
-      onClick={handleAddToCart}
-      disabled={isAdded}
-      whileHover={{ scale: isAdded ? 1 : 1.02 }}
-      whileTap={{ scale: isAdded ? 1 : 0.98 }}
-      className={`w-full px-4 py-3 font-semibold rounded-lg transition-all duration-300 flex items-center justify-center space-x-2 ${
-        isAdded
-          ? "bg-green-500 text-white"
-          : "bg-royal-gold text-royal-charcoal hover:bg-royal-gold/90 royal-glow"
-      }`}
-    >
-      {isAdded ? (
-        <>
-          <Check className="w-5 h-5" />
-          <span>Hinzugefügt!</span>
-        </>
-      ) : (
-        <>
-          <ShoppingCart className="w-5 h-5" />
-          <span>In den Warenkorb</span>
-        </>
+    <div className="space-y-4">
+      {/* Loyalty Badge */}
+      {isLoyaltyEligible && (
+        <div className="flex items-center justify-center">
+          <div className="flex items-center space-x-1 bg-royal-purple text-white px-3 py-1 rounded-full text-sm">
+            <Crown className="w-4 h-4" />
+            <span>Sammelt Loyalty Stempel</span>
+          </div>
+        </div>
       )}
-    </motion.button>
+
+      {/* Quantity Selector */}
+      <div className="flex items-center justify-center space-x-4">
+        <button
+          onClick={() => handleQuantityChange(quantity - 1)}
+          disabled={quantity <= 1}
+          className="w-8 h-8 rounded-full bg-royal-gold/20 text-royal-gold hover:bg-royal-gold/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+        >
+          <Minus className="w-4 h-4" />
+        </button>
+        <span className="text-lg font-semibold text-royal-charcoal w-12 text-center">
+          {quantity}
+        </span>
+        <button
+          onClick={() => handleQuantityChange(quantity + 1)}
+          disabled={quantity >= 10}
+          className="w-8 h-8 rounded-full bg-royal-gold/20 text-royal-gold hover:bg-royal-gold/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Special Instructions */}
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-royal-charcoal">
+          Spezielle Anweisungen (optional)
+        </label>
+        <textarea
+          value={specialInstructions}
+          onChange={(e) => setSpecialInstructions(e.target.value)}
+          placeholder="z.B. extra scharf, ohne Zwiebeln..."
+          className="w-full p-3 border border-royal-gold/30 rounded-royal bg-white text-royal-charcoal focus:outline-none focus:ring-2 focus:ring-royal-gold/50 resize-none"
+          rows={2}
+          maxLength={200}
+        />
+      </div>
+
+      {/* Add to Cart Button */}
+      <motion.button
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        onClick={handleAddToCart}
+        disabled={!item.isAvailable || isAdding}
+        className="w-full bg-royal-gradient-gold text-royal-charcoal font-royal font-bold py-3 px-6 rounded-royal royal-glow hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {isAdding ? (
+          <div className="flex items-center justify-center space-x-2">
+            <div className="w-4 h-4 border-2 border-royal-charcoal border-t-transparent rounded-full animate-spin"></div>
+            <span>Hinzufügen...</span>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center space-x-2">
+            <ShoppingCart className="w-5 h-5" />
+            <span>
+              Zum Warenkorb hinzufügen ({(item.price * quantity).toFixed(2)}€)
+            </span>
+          </div>
+        )}
+      </motion.button>
+    </div>
   );
 };
 

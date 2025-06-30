@@ -9,10 +9,12 @@ import {
   User,
   Phone,
   Hash,
+  Crown,
 } from "lucide-react";
 import { useCart } from "../../contexts/CartContext";
 import { OrderService } from "../../services/orderService";
-import { Order } from "../../types/order";
+import { Order, LoyaltyDiscount } from "../../types/order";
+import LoyaltyOrderIntegration from "../loyalty/LoyaltyOrderIntegration";
 import toast from "react-hot-toast";
 
 interface CartProps {
@@ -33,6 +35,9 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
   } = useCart();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
+  const [loyaltyDiscount, setLoyaltyDiscount] =
+    useState<LoyaltyDiscount | null>(null);
+  const [discountAmount, setDiscountAmount] = useState(0);
 
   const handleQuantityChange = (id: string, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -40,6 +45,29 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
     } else {
       updateQuantity(id, newQuantity);
     }
+  };
+
+  const handleLoyaltyApplied = (
+    discount: number,
+    loyaltyCardId: string,
+    verificationCode: string
+  ) => {
+    const loyaltyData: LoyaltyDiscount = {
+      amount: discount,
+      loyaltyCardId,
+      customerPhone: state.customerPhone,
+      freeShishasRedeemed: 1, // This could be calculated based on the discount
+      verificationCode,
+      isVerified: false,
+      appliedAt: new Date(),
+    };
+
+    setLoyaltyDiscount(loyaltyData);
+    setDiscountAmount(discount);
+  };
+
+  const getFinalTotal = () => {
+    return Math.max(0, getTotalAmount() - discountAmount);
   };
 
   const handleSubmitOrder = async () => {
@@ -59,7 +87,7 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
       const orderData: Omit<Order, "id" | "createdAt" | "updatedAt"> = {
         tableNumber: state.tableNumber,
         items: state.items,
-        totalAmount: getTotalAmount(),
+        totalAmount: getFinalTotal(),
         status: "pending",
         ...(state.customerName &&
           state.customerName.trim() && {
@@ -73,6 +101,7 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
           state.specialInstructions.trim() && {
             specialInstructions: state.specialInstructions.trim(),
           }),
+        ...(loyaltyDiscount && { loyaltyDiscount }),
       };
 
       await OrderService.createOrder(orderData);
@@ -80,6 +109,8 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
       toast.success("Bestellung erfolgreich aufgegeben!");
       clearCart();
       setShowCheckout(false);
+      setLoyaltyDiscount(null);
+      setDiscountAmount(0);
       onClose();
     } catch (error) {
       console.error("Error submitting order:", error);
@@ -157,9 +188,19 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <h3 className="font-semibold text-royal-charcoal">
-                              {item.name}
-                            </h3>
+                            <div className="flex items-center space-x-2">
+                              <h3 className="font-semibold text-royal-charcoal">
+                                {item.name}
+                              </h3>
+                              {/* Loyalty Badge for Shisha Items */}
+                              {(item.category.toLowerCase() === "shisha" ||
+                                item.category.toLowerCase() === "tobacco") && (
+                                <div className="flex items-center space-x-1 bg-royal-purple text-white px-2 py-1 rounded-full text-xs">
+                                  <Crown className="w-3 h-3" />
+                                  <span>Loyalty</span>
+                                </div>
+                              )}
+                            </div>
                             <p className="text-sm text-royal-charcoal/70">
                               {item.category}
                             </p>
@@ -209,11 +250,33 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
 
                   {/* Total */}
                   <div className="border-t border-royal-gold/20 pt-4">
-                    <div className="flex justify-between items-center text-lg font-bold text-royal-charcoal">
-                      <span>Gesamt:</span>
-                      <span className="text-royal-gold">
-                        {getTotalAmount().toFixed(2)}€
-                      </span>
+                    {/* Loyalty Integration */}
+                    <LoyaltyOrderIntegration
+                      cartItems={state.items}
+                      customerPhone={state.customerPhone}
+                      customerName={state.customerName}
+                      onLoyaltyApplied={handleLoyaltyApplied}
+                      showInOrderFlow={showCheckout}
+                    />
+
+                    {/* Total Amount */}
+                    <div className="space-y-2 mt-4">
+                      <div className="flex justify-between items-center text-royal-charcoal">
+                        <span>Zwischensumme:</span>
+                        <span>{getTotalAmount().toFixed(2)}€</span>
+                      </div>
+                      {discountAmount > 0 && (
+                        <div className="flex justify-between items-center text-royal-purple">
+                          <span>Loyalty Rabatt:</span>
+                          <span>-{discountAmount.toFixed(2)}€</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center text-lg font-bold text-royal-charcoal border-t border-royal-gold/20 pt-2">
+                        <span>Gesamt:</span>
+                        <span className="text-royal-gold">
+                          {getFinalTotal().toFixed(2)}€
+                        </span>
+                      </div>
                     </div>
                   </div>
 

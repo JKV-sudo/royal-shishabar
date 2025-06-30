@@ -9,6 +9,16 @@ export interface CartItem {
   specialInstructions?: string;
 }
 
+export interface LoyaltyDiscount {
+  amount: number;
+  loyaltyCardId: string;
+  customerPhone: string;
+  freeShishasRedeemed: number;
+  verificationCode: string;
+  isVerified?: boolean;
+  appliedAt: Date;
+}
+
 export interface Order {
   id: string;
   tableNumber: number;
@@ -18,6 +28,7 @@ export interface Order {
   customerName?: string;
   customerPhone?: string;
   specialInstructions?: string;
+  loyaltyDiscount?: LoyaltyDiscount;
   createdAt: Date;
   updatedAt: Date;
   estimatedCompletionTime?: Date;

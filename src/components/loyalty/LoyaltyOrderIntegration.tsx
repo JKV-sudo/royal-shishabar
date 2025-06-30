@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Crown, Gift, Star, Phone, CheckCircle } from "lucide-react";
+import {
+  Crown,
+  Gift,
+  Star,
+  Phone,
+  CheckCircle,
+  Shield,
+  Copy,
+} from "lucide-react";
 import { LoyaltyService } from "../../services/loyaltyService";
 import { LoyaltyCard as LoyaltyCardType } from "../../types/loyalty";
 import { CartItem } from "../../types/order";
@@ -11,7 +19,11 @@ interface LoyaltyOrderIntegrationProps {
   cartItems: CartItem[];
   customerPhone?: string;
   customerName?: string;
-  onLoyaltyApplied?: (discountAmount: number, loyaltyCardId: string) => void;
+  onLoyaltyApplied?: (
+    discountAmount: number,
+    loyaltyCardId: string,
+    verificationCode: string
+  ) => void;
   onLoyaltyUpdated?: (loyaltyCard: LoyaltyCardType) => void;
   showInOrderFlow?: boolean;
 }
@@ -30,10 +42,23 @@ const LoyaltyOrderIntegration: React.FC<LoyaltyOrderIntegrationProps> = ({
   const [name, setName] = useState(customerName);
   const [showLoyaltyForm, setShowLoyaltyForm] = useState(false);
   const [appliedDiscount, setAppliedDiscount] = useState(0);
+  const [verificationCode, setVerificationCode] = useState<string>("");
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showVerificationCode, setShowVerificationCode] = useState(false);
 
   const shishaCount = LoyaltyService.countShishaItems(cartItems);
   const hasShishaItems = shishaCount > 0;
+
+  // Generate 6-digit verification code
+  const generateVerificationCode = (): string => {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  };
+
+  // Copy verification code to clipboard
+  const copyVerificationCode = () => {
+    navigator.clipboard.writeText(verificationCode);
+    // Could add a toast notification here
+  };
 
   // Calculate potential discount for free shisha redemption
   const getShishaItemsForDiscount = () => {
@@ -104,10 +129,14 @@ const LoyaltyOrderIntegration: React.FC<LoyaltyOrderIntegrationProps> = ({
     if (!loyaltyCard || loyaltyCard.freeShishaEarned < shishaCount) return;
 
     const discount = calculateFreeShishaDiscount(shishaCount);
+    const newVerificationCode = generateVerificationCode();
+
     setAppliedDiscount(discount);
+    setVerificationCode(newVerificationCode);
+    setShowVerificationCode(true);
 
     if (onLoyaltyApplied) {
-      onLoyaltyApplied(discount, loyaltyCard.id);
+      onLoyaltyApplied(discount, loyaltyCard.id, newVerificationCode);
     }
 
     // Show success message
@@ -163,6 +192,10 @@ const LoyaltyOrderIntegration: React.FC<LoyaltyOrderIntegrationProps> = ({
                       {loyaltyCard.freeShishaEarned > 1 ? "s" : ""} verfügbar!
                     </span>
                   </div>
+                  <div className="flex items-center space-x-1 bg-royal-purple text-white px-2 py-1 rounded-full text-xs">
+                    <Crown className="w-3 h-3" />
+                    <span>Loyalty</span>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -194,20 +227,54 @@ const LoyaltyOrderIntegration: React.FC<LoyaltyOrderIntegrationProps> = ({
               </motion.div>
             )}
 
-          {/* Applied Discount Display */}
+          {/* Applied Discount Display with Verification Code */}
           {appliedDiscount > 0 && (
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-green-100 rounded-royal p-4 border border-green-300"
+              className="bg-royal-purple/10 rounded-royal p-4 border border-royal-purple/30"
             >
-              <div className="flex items-center space-x-2">
-                <CheckCircle className="w-5 h-5 text-green-600" />
-                <span className="font-medium text-green-800">
-                  Gratis Shisha eingelöst! Rabatt: -{appliedDiscount.toFixed(2)}
-                  €
-                </span>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="w-5 h-5 text-royal-purple" />
+                  <span className="font-medium text-royal-purple">
+                    Gratis Shisha eingelöst! Rabatt: -
+                    {appliedDiscount.toFixed(2)}€
+                  </span>
+                </div>
+                <div className="flex items-center space-x-1 bg-royal-purple text-white px-2 py-1 rounded-full text-xs">
+                  <Crown className="w-3 h-3" />
+                  <span>Loyalty</span>
+                </div>
               </div>
+
+              {showVerificationCode && (
+                <div className="bg-royal-purple/5 rounded-royal p-3 border border-royal-purple/20">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Shield className="w-4 h-4 text-royal-purple" />
+                      <span className="text-sm font-medium text-royal-purple">
+                        Bestätigungscode für Personal:
+                      </span>
+                    </div>
+                    <button
+                      onClick={copyVerificationCode}
+                      className="text-royal-purple hover:text-royal-purple-light"
+                      title="Code kopieren"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="mt-2 text-center">
+                    <span className="text-2xl font-bold text-royal-purple bg-white px-4 py-2 rounded-royal border-2 border-royal-purple font-mono">
+                      {verificationCode}
+                    </span>
+                  </div>
+                  <p className="text-xs text-royal-purple/70 mt-2 text-center">
+                    Zeigen Sie diesen Code dem Personal zur Bestätigung
+                  </p>
+                </div>
+              )}
             </motion.div>
           )}
         </div>

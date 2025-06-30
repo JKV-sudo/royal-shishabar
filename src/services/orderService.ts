@@ -213,6 +213,24 @@ export class OrderService {
     }
   }
 
+  // Verify loyalty discount
+  static async verifyLoyaltyDiscount(orderId: string): Promise<void> {
+    try {
+      const db = getFirestoreDB();
+      const docRef = doc(db, this.collectionName, orderId);
+      
+      await updateDoc(docRef, {
+        'loyaltyDiscount.isVerified': true,
+        updatedAt: serverTimestamp(),
+      });
+
+      console.log(`Loyalty discount verified for order ${orderId}`);
+    } catch (error) {
+      console.error('Error verifying loyalty discount:', error);
+      throw error;
+    }
+  }
+
   // Update order
   static async updateOrder(id: string, updates: Partial<Order>): Promise<void> {
     try {
