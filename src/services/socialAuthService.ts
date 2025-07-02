@@ -1,11 +1,14 @@
 import {
   GoogleAuthProvider,
   signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
   User as FirebaseUser,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import {
+  doc,
+  setDoc,
+  getDoc,
+  serverTimestamp,
+} from 'firebase/firestore';
 import { getFirebaseAuth, getFirestoreDB } from '../config/firebase';
 import { User } from '../stores/authStore';
 
@@ -14,7 +17,7 @@ export interface SocialProvider {
   name: string;
   icon: string;
   color: string;
-  provider: any;
+  provider: GoogleAuthProvider;
 }
 
 export const SOCIAL_PROVIDERS: SocialProvider[] = [
@@ -28,231 +31,114 @@ export const SOCIAL_PROVIDERS: SocialProvider[] = [
 ];
 
 export class SocialAuthService {
-  // Sign in with Google
-  static async signInWithGoogle(): Promise<User> {
+  // Sign in with any social provider
+  static async signInWithProvider(providerId: string): Promise<User> {
+    const provider = SOCIAL_PROVIDERS.find(p => p.id === providerId);
+    if (!provider) {
+      throw new Error(`Provider ${providerId} not supported`);
+    }
+
     try {
       const auth = getFirebaseAuth();
       const db = getFirestoreDB();
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
+      
+      // Configure provider scopes
+      this.configureProvider(provider.provider, providerId);
+      
+      const result = await signInWithPopup(auth, provider.provider);
       const firebaseUser = result.user;
 
-      // Check if user exists in Firestore
-      const userData = await this.getUserData(firebaseUser.uid);
-
-      if (!userData) {
-        // Create new user document
-        const newUserData: Omit<User, 'id'> = {
+      // Check if user already exists in Firestore
+      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+      
+      let userData;
+      if (userDoc.exists()) {
+        // User exists, get their data
+        const data = userDoc.data();
+        userData = {
+          id: firebaseUser.uid,
           email: firebaseUser.email!,
-          name: firebaseUser.displayName || 'User',
+          name: data.name || firebaseUser.displayName || '',
+          phone: data.phone,
+          role: data.role || 'user',
+          avatar: firebaseUser.photoURL || data.avatar,
+          createdAt: data.createdAt.toDate(),
+        };
+      } else {
+        // New user, create profile
+        const newUserData = {
+          email: firebaseUser.email!,
+          name: firebaseUser.displayName || '',
+          phone: undefined, // Will be collected later if needed
           role: 'user',
           avatar: firebaseUser.photoURL || undefined,
+          createdAt: serverTimestamp(),
+          socialProvider: providerId,
+        };
+
+        await setDoc(doc(db, 'users', firebaseUser.uid), newUserData);
+
+        userData = {
+          id: firebaseUser.uid,
+          email: firebaseUser.email!,
+          name: firebaseUser.displayName || '',
+          phone: undefined,
+          role: 'user',
+          avatar: firebaseUser.photoURL,
           createdAt: new Date(),
         };
-
-        await setDoc(doc(db, 'users', firebaseUser.uid), {
-          ...newUserData,
-          createdAt: serverTimestamp(),
-        });
-
-        return {
-          id: firebaseUser.uid,
-          ...newUserData,
-        };
       }
 
-      return {
-        id: firebaseUser.uid,
-        email: firebaseUser.email!,
-        name: userData.name,
-        role: userData.role,
-        avatar: firebaseUser.photoURL || userData.avatar,
-        createdAt: userData.createdAt,
-      };
+      return userData;
     } catch (error: any) {
-      throw new Error(this.getErrorMessage(error.code));
-    }
-  }
-
-  // Sign in with any social provider
-  static async signInWithProvider(providerId: string): Promise<User> {
-    try {
-      const auth = getFirebaseAuth();
-      const socialProvider = SOCIAL_PROVIDERS.find(p => p.id === providerId);
-      if (!socialProvider) {
-        throw new Error('Unsupported provider');
-      }
-
-      // Configure provider scopes
-      this.configureProvider(socialProvider.provider, providerId);
-
-      // Sign in with popup
-      const userCredential = await signInWithPopup(auth, socialProvider.provider);
-      return await this.handleSocialSignIn(userCredential.user, providerId);
-    } catch (error: any) {
+      console.error('Social auth error:', error);
       throw new Error(this.getSocialErrorMessage(error.code, providerId));
     }
-  }
-
-  // Sign in with redirect (for mobile or when popup is blocked)
-  static async signInWithRedirect(providerId: string): Promise<void> {
-    try {
-      const auth = getFirebaseAuth();
-      const socialProvider = SOCIAL_PROVIDERS.find(p => p.id === providerId);
-      if (!socialProvider) {
-        throw new Error('Unsupported provider');
-      }
-
-      this.configureProvider(socialProvider.provider, providerId);
-      await signInWithRedirect(auth, socialProvider.provider);
-    } catch (error: any) {
-      throw new Error(this.getSocialErrorMessage(error.code, providerId));
-    }
-  }
-
-  // Handle redirect result (call this after page load)
-  static async handleRedirectResult(): Promise<User | null> {
-    try {
-      const auth = getFirebaseAuth();
-      const result = await getRedirectResult(auth);
-      if (result) {
-        return await this.handleSocialSignIn(result.user, 'redirect');
-      }
-      return null;
-    } catch (error: any) {
-      console.error('Redirect sign-in error:', error);
-      throw new Error(this.getSocialErrorMessage(error.code, 'redirect'));
-    }
-  }
-
-  // Handle social sign-in result
-  private static async handleSocialSignIn(firebaseUser: FirebaseUser, providerId: string): Promise<User> {
-    const db = getFirestoreDB();
-
-    // Check if user exists in Firestore
-    const userData = await this.getUserData(firebaseUser.uid);
-
-    if (!userData) {
-      // Create new user document
-      const newUserData: Omit<User, 'id'> = {
-        email: firebaseUser.email!,
-        name: firebaseUser.displayName || 'User',
-        role: 'customer',
-        avatar: firebaseUser.photoURL || undefined,
-        createdAt: new Date(),
-      };
-
-      await setDoc(doc(db, 'users', firebaseUser.uid), {
-        ...newUserData,
-        socialProvider: providerId,
-        lastSignIn: new Date(),
-      });
-
-      return {
-        id: firebaseUser.uid,
-        ...newUserData,
-      };
-    }
-
-    // Update existing user's last sign-in
-    await setDoc(doc(db, 'users', firebaseUser.uid), {
-      lastSignIn: new Date(),
-      socialProvider: providerId,
-    }, { merge: true });
-
-    return {
-      id: firebaseUser.uid,
-      email: firebaseUser.email!,
-      name: userData.name,
-      role: userData.role,
-      avatar: firebaseUser.photoURL || userData.avatar,
-      createdAt: userData.createdAt,
-    };
   }
 
   // Configure provider with appropriate scopes
-  private static configureProvider(provider: any, providerId: string): void {
+  private static configureProvider(provider: GoogleAuthProvider, providerId: string): void {
     if (providerId === 'google') {
       provider.addScope('profile');
       provider.addScope('email');
     }
   }
 
-  // Get user data from Firestore
-  static async getUserData(userId: string): Promise<Omit<User, 'id'> | null> {
-    try {
-      const db = getFirestoreDB();
-      const userDoc = await getDoc(doc(db, 'users', userId));
-      if (userDoc.exists()) {
-        const data = userDoc.data();
-        return {
-          email: data.email,
-          name: data.name,
-          role: data.role,
-          avatar: data.avatar,
-          createdAt: data.createdAt.toDate(),
-        };
-      }
-      return null;
-    } catch (error) {
-      console.error('Error getting user data:', error);
-      return null;
-    }
-  }
-
-  // Get error message from Firebase error code
-  private static getErrorMessage(code: string): string {
-    switch (code) {
-      case 'auth/popup-closed-by-user':
-        return 'Sign-in was cancelled.';
-      case 'auth/popup-blocked':
-        return 'Sign-in popup was blocked. Please allow popups for this site.';
-      case 'auth/cancelled-popup-request':
-        return 'Sign-in was cancelled.';
-      case 'auth/account-exists-with-different-credential':
-        return 'An account already exists with the same email address but different sign-in credentials.';
-      default:
-        return 'An error occurred during sign-in. Please try again.';
-    }
-  }
-
-  // Get error message for social login
+  // Get user-friendly error messages
   private static getSocialErrorMessage(code: string, providerId: string): string {
     switch (code) {
       case 'auth/popup-closed-by-user':
         return 'Sign-in was cancelled.';
       case 'auth/popup-blocked':
-        return 'Pop-up was blocked. Please allow pop-ups for this site.';
-      case 'auth/cancelled-popup-request':
-        return 'Multiple pop-up requests were made. Please try again.';
+        return 'Pop-up was blocked by your browser. Please allow pop-ups and try again.';
       case 'auth/account-exists-with-different-credential':
         return 'An account already exists with the same email address but different sign-in credentials.';
+      case 'auth/auth-domain-config-required':
+        return 'Authentication configuration error. Please contact support.';
+      case 'auth/cancelled-popup-request':
+        return 'Another sign-in request is already pending.';
       case 'auth/operation-not-allowed':
         return `${providerId} sign-in is not enabled. Please contact support.`;
+      case 'auth/operation-not-supported-in-this-environment':
+        return 'This operation is not supported in the current environment.';
+      case 'auth/timeout':
+        return 'The sign-in request timed out. Please try again.';
       case 'auth/user-disabled':
-        return 'This account has been disabled.';
-      case 'auth/invalid-credential':
-        return 'Invalid credentials. Please try again.';
-      case 'auth/network-request-failed':
-        return 'Network error. Please check your connection and try again.';
+        return 'This account has been disabled. Please contact support.';
+      case 'auth/web-storage-unsupported':
+        return 'Web storage is not supported in your browser.';
       default:
-        return `Sign-in with ${providerId} failed. Please try again.`;
+        return `An error occurred during ${providerId} sign-in. Please try again.`;
     }
   }
 
-  // Get available providers based on configuration
+  // Get available social providers
   static getAvailableProviders(): SocialProvider[] {
-    const availableProviders = [...SOCIAL_PROVIDERS];
-    
-    // Remove providers that aren't configured
-    if (!import.meta.env.VITE_FACEBOOK_APP_ID) {
-      availableProviders.splice(availableProviders.findIndex(p => p.id === 'facebook'), 1);
-    }
-    
-    if (!import.meta.env.VITE_TWITTER_API_KEY) {
-      availableProviders.splice(availableProviders.findIndex(p => p.id === 'twitter'), 1);
-    }
+    return SOCIAL_PROVIDERS;
+  }
 
-    return availableProviders;
+  // Get supported provider IDs
+  static getSupportedProviders(): string[] {
+    return SOCIAL_PROVIDERS.map(p => p.id);
   }
 } 

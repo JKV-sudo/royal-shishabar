@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Search, Phone, Plus, AlertCircle } from "lucide-react";
+import { Search, Phone, Plus, AlertCircle, Crown } from "lucide-react";
 import { LoyaltyService } from "../../services/loyaltyService";
 import { LoyaltyCard as LoyaltyCardType } from "../../types/loyalty";
 import LoyaltyCard from "./LoyaltyCard";
@@ -107,27 +107,27 @@ const LoyaltySearch: React.FC<LoyaltySearchProps> = ({
   return (
     <div className="space-y-4">
       {/* Search Form */}
-      <div className="bg-white rounded-royal p-4 shadow-lg border border-royal-gold/20">
-        <h3 className="text-lg font-royal font-bold text-royal-charcoal mb-4 flex items-center space-x-2">
-          <Search className="w-5 h-5" />
+      <div className="bg-white rounded-royal p-6 shadow-lg border border-royal-purple/20">
+        <h3 className="text-lg font-royal font-bold text-royal-purple mb-4 flex items-center space-x-2">
+          <Crown className="w-5 h-5" />
           <span>Stempelpass suchen</span>
         </h3>
 
-        <div className="space-y-3">
+        <div className="space-y-4">
           {/* Phone Input */}
           <div>
-            <label className="block text-sm font-medium text-royal-charcoal mb-1">
+            <label className="block text-sm font-medium text-royal-charcoal mb-2">
               Telefonnummer
             </label>
             <div className="relative">
-              <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-royal-charcoal/50 w-4 h-4" />
+              <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-royal-purple/60 w-5 h-5" />
               <input
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="z.B. +49 123 4567890"
-                className="w-full pl-10 pr-4 py-2 border border-royal-gold/30 rounded-royal focus:outline-none focus:border-royal-gold"
+                className="w-full pl-12 pr-4 py-3 border-2 border-royal-purple/20 rounded-royal focus:outline-none focus:border-royal-purple focus:ring-2 focus:ring-royal-purple/20 bg-white text-royal-charcoal placeholder-royal-charcoal/50 transition-all duration-200"
                 disabled={loading}
               />
             </div>
@@ -140,7 +140,7 @@ const LoyaltySearch: React.FC<LoyaltySearchProps> = ({
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
             >
-              <label className="block text-sm font-medium text-royal-charcoal mb-1">
+              <label className="block text-sm font-medium text-royal-charcoal mb-2">
                 Kundenname
               </label>
               <input
@@ -149,7 +149,7 @@ const LoyaltySearch: React.FC<LoyaltySearchProps> = ({
                 onChange={(e) => setCustomerName(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Name des Kunden"
-                className="w-full px-4 py-2 border border-royal-gold/30 rounded-royal focus:outline-none focus:border-royal-gold"
+                className="w-full px-4 py-3 border-2 border-royal-purple/20 rounded-royal focus:outline-none focus:border-royal-purple focus:ring-2 focus:ring-royal-purple/20 bg-white text-royal-charcoal placeholder-royal-charcoal/50 transition-all duration-200"
                 disabled={loading}
               />
             </motion.div>
@@ -157,14 +157,18 @@ const LoyaltySearch: React.FC<LoyaltySearchProps> = ({
 
           {/* Error Message */}
           {error && (
-            <div className="flex items-center space-x-2 text-red-600 bg-red-50 p-2 rounded-royal">
-              <AlertCircle className="w-4 h-4" />
-              <span className="text-sm">{error}</span>
-            </div>
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center space-x-2 text-red-600 bg-red-50 p-3 rounded-royal border border-red-200"
+            >
+              <AlertCircle className="w-5 h-5" />
+              <span className="text-sm font-medium">{error}</span>
+            </motion.div>
           )}
 
           {/* Action Buttons */}
-          <div className="flex space-x-2">
+          <div className="flex space-x-3">
             {!showCreateForm ? (
               <>
                 <motion.button
@@ -172,20 +176,20 @@ const LoyaltySearch: React.FC<LoyaltySearchProps> = ({
                   whileTap={{ scale: 0.98 }}
                   onClick={searchCard}
                   disabled={loading || !phone.trim()}
-                  className="flex-1 bg-royal-gold text-royal-charcoal py-2 px-4 rounded-royal font-medium hover:bg-royal-gold/90 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                  className="flex-1 bg-royal-purple text-white py-3 px-6 rounded-royal font-medium hover:bg-royal-purple-light transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 royal-glow"
                 >
                   {loading ? (
                     <LoadingSpinner size="sm" />
                   ) : (
-                    <Search className="w-4 h-4" />
+                    <Search className="w-5 h-5" />
                   )}
-                  <span>Suchen</span>
+                  <span>{loading ? "Suche..." : "Suchen"}</span>
                 </motion.button>
 
                 {loyaltyCard && (
                   <button
                     onClick={resetSearch}
-                    className="px-4 py-2 border border-royal-gold text-royal-gold rounded-royal hover:bg-royal-gold/10 transition-colors duration-300"
+                    className="px-6 py-3 border-2 border-royal-purple text-royal-purple rounded-royal hover:bg-royal-purple/10 transition-colors duration-300 font-medium"
                   >
                     Neue Suche
                   </button>
@@ -198,19 +202,21 @@ const LoyaltySearch: React.FC<LoyaltySearchProps> = ({
                   whileTap={{ scale: 0.98 }}
                   onClick={handleCreateNew}
                   disabled={loading || !phone.trim() || !customerName.trim()}
-                  className="flex-1 bg-green-600 text-white py-2 px-4 rounded-royal font-medium hover:bg-green-700 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                  className="flex-1 bg-royal-purple-light text-white py-3 px-6 rounded-royal font-medium hover:bg-royal-purple transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 royal-glow"
                 >
                   {loading ? (
                     <LoadingSpinner size="sm" />
                   ) : (
-                    <Plus className="w-4 h-4" />
+                    <Plus className="w-5 h-5" />
                   )}
-                  <span>Neuen Stempelpass erstellen</span>
+                  <span>
+                    {loading ? "Erstelle..." : "Neuen Stempelpass erstellen"}
+                  </span>
                 </motion.button>
 
                 <button
                   onClick={() => setShowCreateForm(false)}
-                  className="px-4 py-2 border border-gray-300 text-gray-600 rounded-royal hover:bg-gray-50 transition-colors duration-300"
+                  className="px-6 py-3 border-2 border-royal-charcoal/30 text-royal-charcoal/70 rounded-royal hover:bg-royal-charcoal/5 transition-colors duration-300 font-medium"
                 >
                   Abbrechen
                 </button>

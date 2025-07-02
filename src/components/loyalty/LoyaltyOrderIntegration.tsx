@@ -164,12 +164,12 @@ const LoyaltyOrderIntegration: React.FC<LoyaltyOrderIntegrationProps> = ({
             <div className="bg-royal-gold/10 rounded-royal p-4 border border-royal-gold/30">
               <div className="flex items-center space-x-2 mb-2">
                 <Star className="w-5 h-5 text-royal-gold" />
-                <span className="font-medium text-royal-charcoal">
+                <span className="font-medium text-gray-900">
                   Diese Bestellung enthält {shishaCount} Shisha
                   {shishaCount > 1 ? "s" : ""}
                 </span>
               </div>
-              <p className="text-sm text-royal-charcoal/70">
+              <p className="text-sm text-gray-700 font-medium">
                 Sie erhalten {getStampsToEarn()} Stempel für diese Bestellung
               </p>
             </div>
@@ -270,7 +270,7 @@ const LoyaltyOrderIntegration: React.FC<LoyaltyOrderIntegrationProps> = ({
                       {verificationCode}
                     </span>
                   </div>
-                  <p className="text-xs text-royal-purple/70 mt-2 text-center">
+                  <p className="text-xs text-gray-700 font-medium mt-2 text-center">
                     Zeigen Sie diesen Code dem Personal zur Bestätigung
                   </p>
                 </div>
@@ -283,14 +283,12 @@ const LoyaltyOrderIntegration: React.FC<LoyaltyOrderIntegrationProps> = ({
         <div className="bg-royal-cream rounded-royal p-4 border border-royal-gold/30">
           <div className="flex items-center space-x-2 mb-3">
             <Crown className="w-5 h-5 text-royal-gold" />
-            <span className="font-medium text-royal-charcoal">
-              Royal Stempelpass
-            </span>
+            <span className="font-medium text-gray-900">Royal Stempelpass</span>
           </div>
 
           {hasShishaItems && (
             <div className="mb-3 p-3 bg-royal-gold/10 rounded-royal">
-              <p className="text-sm text-royal-charcoal">
+              <p className="text-sm text-gray-800 font-medium">
                 <strong>
                   Diese Bestellung enthält {shishaCount} Shisha
                   {shishaCount > 1 ? "s" : ""}!
@@ -305,13 +303,13 @@ const LoyaltyOrderIntegration: React.FC<LoyaltyOrderIntegrationProps> = ({
           {!showLoyaltyForm ? (
             <div className="space-y-3">
               <div className="flex items-center space-x-2">
-                <Phone className="w-4 h-4 text-royal-charcoal/50" />
+                <Phone className="w-4 h-4 text-gray-600" />
                 <input
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="Telefonnummer eingeben"
-                  className="flex-1 px-3 py-2 border border-royal-gold/30 rounded-royal focus:outline-none focus:border-royal-gold"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-royal bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-royal-purple focus:border-royal-purple transition-colors"
                   onKeyPress={(e) =>
                     e.key === "Enter" &&
                     phone.trim() &&
@@ -329,7 +327,7 @@ const LoyaltyOrderIntegration: React.FC<LoyaltyOrderIntegrationProps> = ({
 
               <button
                 onClick={() => setShowLoyaltyForm(true)}
-                className="w-full text-center text-royal-gold hover:text-royal-gold/80 text-sm"
+                className="w-full text-center text-royal-purple hover:text-royal-purple/80 text-sm font-medium"
               >
                 Neuen Stempelpass erstellen
               </button>
@@ -341,14 +339,14 @@ const LoyaltyOrderIntegration: React.FC<LoyaltyOrderIntegrationProps> = ({
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="Telefonnummer"
-                className="w-full px-3 py-2 border border-royal-gold/30 rounded-royal focus:outline-none focus:border-royal-gold"
+                className="w-full px-3 py-2 border border-gray-300 rounded-royal bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-royal-purple focus:border-royal-purple transition-colors"
               />
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Ihr Name"
-                className="w-full px-3 py-2 border border-royal-gold/30 rounded-royal focus:outline-none focus:border-royal-gold"
+                className="w-full px-3 py-2 border border-gray-300 rounded-royal bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-royal-purple focus:border-royal-purple transition-colors"
               />
               <div className="flex space-x-2">
                 <button

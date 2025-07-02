@@ -1,8 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Crown, History, Gift, Star, ArrowLeft } from "lucide-react";
+import {
+  Crown,
+  History,
+  Gift,
+  Star,
+  ArrowLeft,
+  Phone,
+  UserPlus,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { LoyaltyService } from "../services/loyaltyService";
+import { AuthService } from "../services/authService";
 import {
   LoyaltyCard as LoyaltyCardType,
   LoyaltyTransaction,
@@ -10,13 +19,83 @@ import {
 import LoyaltyCard from "../components/loyalty/LoyaltyCard";
 import LoyaltySearch from "../components/loyalty/LoyaltySearch";
 import LoadingSpinner from "../components/common/LoadingSpinner";
+import { useAuthStore } from "../stores/authStore";
+import toast from "react-hot-toast";
 
 const Loyalty = () => {
   const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuthStore();
   const [loyaltyCard, setLoyaltyCard] = useState<LoyaltyCardType | null>(null);
   const [transactions, setTransactions] = useState<LoyaltyTransaction[]>([]);
   const [loading, setLoading] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showPhonePrompt, setShowPhonePrompt] = useState(false);
+  const [newPhone, setNewPhone] = useState("");
+
+  // Check for authenticated user's loyalty card on mount
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      if (user.phone) {
+        // User has a phone number, try to find their loyalty card
+        searchUserLoyaltyCard(user.phone);
+      } else {
+        // User doesn't have a phone number, show prompt to add one
+        setShowPhonePrompt(true);
+      }
+    }
+  }, [isAuthenticated, user]);
+
+  const searchUserLoyaltyCard = async (phone: string) => {
+    setLoading(true);
+    try {
+      const card = await LoyaltyService.searchLoyaltyCardByPhone(phone);
+      if (card) {
+        setLoyaltyCard(card);
+        loadTransactions(card.id);
+        toast.success("Ihr Stempelpass wurde gefunden!");
+      } else {
+        // No existing card, create one automatically
+        const newCard = await LoyaltyService.getOrCreateLoyaltyCard(
+          phone,
+          user!.name
+        );
+        setLoyaltyCard(newCard);
+        loadTransactions(newCard.id);
+        toast.success("Neuer Stempelpass erstellt!");
+      }
+    } catch (error) {
+      console.error("Error searching user loyalty card:", error);
+      toast.error("Fehler beim Laden Ihres Stempelpasses");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePhoneUpdate = async () => {
+    if (!newPhone.trim()) {
+      toast.error("Bitte geben Sie eine Telefonnummer ein");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Update user profile with phone number
+      await AuthService.updateUserProfile(user!.id, { phone: newPhone.trim() });
+
+      // Update local user state
+      useAuthStore.getState().setUser({ ...user!, phone: newPhone.trim() });
+
+      // Search for loyalty card with new phone
+      await searchUserLoyaltyCard(newPhone.trim());
+      setShowPhonePrompt(false);
+      setNewPhone("");
+    } catch (error) {
+      console.error("Error updating phone:", error);
+      toast.error("Fehler beim Aktualisieren der Telefonnummer");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCardSelected = async (card: LoyaltyCardType) => {
     setLoyaltyCard(card);
@@ -40,33 +119,33 @@ const Loyalty = () => {
   const getTransactionIcon = (type: LoyaltyTransaction["type"]) => {
     switch (type) {
       case "stamp_earned":
-        return <Star className="w-4 h-4 text-yellow-600" />;
+        return <Star className="w-4 h-4 text-royal-purple" />;
       case "free_shisha_earned":
-        return <Gift className="w-4 h-4 text-green-600" />;
+        return <Gift className="w-4 h-4 text-royal-purple-light" />;
       case "free_shisha_redeemed":
-        return <Gift className="w-4 h-4 text-blue-600" />;
+        return <Gift className="w-4 h-4 text-royal-gold" />;
       default:
-        return <Star className="w-4 h-4 text-gray-600" />;
+        return <Star className="w-4 h-4 text-royal-purple" />;
     }
   };
 
   const getTransactionColor = (type: LoyaltyTransaction["type"]) => {
     switch (type) {
       case "stamp_earned":
-        return "bg-yellow-50 border-yellow-200";
+        return "bg-royal-purple/10 border-royal-purple/20";
       case "free_shisha_earned":
-        return "bg-green-50 border-green-200";
+        return "bg-royal-purple-light/10 border-royal-purple-light/20";
       case "free_shisha_redeemed":
-        return "bg-blue-50 border-blue-200";
+        return "bg-royal-gold/10 border-royal-gold/20";
       default:
-        return "bg-gray-50 border-gray-200";
+        return "bg-royal-purple/10 border-royal-purple/20";
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-royal-cream to-royal-cream-light">
+    <div className="min-h-screen bg-gradient-to-br from-royal-cream to-royal-purple/5">
       {/* Header */}
-      <div className="bg-gradient-to-r from-royal-purple-dark to-royal-burgundy text-white py-8">
+      <div className="bg-gradient-to-r from-royal-purple to-royal-purple-light text-white py-8">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <button
             onClick={() => navigate(-1)}
@@ -90,19 +169,79 @@ const Loyalty = () => {
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-8">
+          {/* Phone Number Prompt for Authenticated Users */}
+          {isAuthenticated && showPhonePrompt && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-royal p-6 shadow-lg border border-royal-purple/20"
+            >
+              <div className="text-center mb-4">
+                <div className="w-16 h-16 bg-royal-purple/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <UserPlus className="w-8 h-8 text-royal-purple" />
+                </div>
+                <h3 className="text-xl font-royal font-bold text-royal-purple mb-2">
+                  Telefonnummer hinzufügen
+                </h3>
+                <p className="text-royal-charcoal/70 mb-4">
+                  Um Ihren Stempelpass zu verwalten, benötigen wir Ihre
+                  Telefonnummer
+                </p>
+              </div>
+
+              <div className="max-w-sm mx-auto">
+                <div className="relative mb-4">
+                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-royal-purple/60 w-5 h-5" />
+                  <input
+                    type="tel"
+                    value={newPhone}
+                    onChange={(e) => setNewPhone(e.target.value)}
+                    placeholder="z.B. +49 123 4567890"
+                    className="w-full pl-12 pr-4 py-3 border-2 border-royal-purple/20 rounded-royal focus:outline-none focus:border-royal-purple focus:ring-2 focus:ring-royal-purple/20 bg-white text-royal-charcoal placeholder-royal-charcoal/50 transition-all duration-200"
+                    disabled={loading}
+                  />
+                </div>
+
+                <div className="flex space-x-3">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handlePhoneUpdate}
+                    disabled={loading || !newPhone.trim()}
+                    className="flex-1 bg-royal-purple text-white py-3 px-6 rounded-royal font-medium hover:bg-royal-purple-light transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 royal-glow"
+                  >
+                    {loading ? (
+                      <LoadingSpinner size="sm" />
+                    ) : (
+                      <Phone className="w-5 h-5" />
+                    )}
+                    <span>{loading ? "Aktualisiere..." : "Hinzufügen"}</span>
+                  </motion.button>
+
+                  <button
+                    onClick={() => setShowPhonePrompt(false)}
+                    className="px-6 py-3 border-2 border-royal-charcoal/30 text-royal-charcoal/70 rounded-royal hover:bg-royal-charcoal/5 transition-colors duration-300 font-medium"
+                  >
+                    Später
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
           {/* How it works section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-royal p-6 shadow-lg border border-royal-gold/20"
+            className="bg-white rounded-royal p-6 shadow-lg border border-royal-purple/20"
           >
-            <h2 className="text-2xl font-royal font-bold text-royal-charcoal mb-4">
+            <h2 className="text-2xl font-royal font-bold text-royal-purple mb-4">
               So funktioniert's
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="text-center">
-                <div className="w-16 h-16 bg-royal-gold/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <Star className="w-8 h-8 text-royal-gold" />
+                <div className="w-16 h-16 bg-royal-purple/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Star className="w-8 h-8 text-royal-purple" />
                 </div>
                 <h3 className="font-bold text-royal-charcoal mb-2">Sammeln</h3>
                 <p className="text-sm text-royal-charcoal/70">
@@ -111,8 +250,8 @@ const Loyalty = () => {
               </div>
 
               <div className="text-center">
-                <div className="w-16 h-16 bg-royal-gold/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <Crown className="w-8 h-8 text-royal-gold" />
+                <div className="w-16 h-16 bg-royal-purple/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Crown className="w-8 h-8 text-royal-purple" />
                 </div>
                 <h3 className="font-bold text-royal-charcoal mb-2">
                   10 Stempel
@@ -123,8 +262,8 @@ const Loyalty = () => {
               </div>
 
               <div className="text-center">
-                <div className="w-16 h-16 bg-royal-gold/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <Gift className="w-8 h-8 text-royal-gold" />
+                <div className="w-16 h-16 bg-royal-purple/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Gift className="w-8 h-8 text-royal-purple" />
                 </div>
                 <h3 className="font-bold text-royal-charcoal mb-2">Einlösen</h3>
                 <p className="text-sm text-royal-charcoal/70">
@@ -135,7 +274,7 @@ const Loyalty = () => {
           </motion.div>
 
           {/* Loyalty Card Search/Display */}
-          {!loyaltyCard ? (
+          {!loyaltyCard && !showPhonePrompt ? (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -147,8 +286,21 @@ const Loyalty = () => {
                 onCreateNew={() => {}}
               />
             </motion.div>
-          ) : (
+          ) : loyaltyCard ? (
             <div className="space-y-6">
+              {/* Welcome message for authenticated users */}
+              {isAuthenticated && user && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-royal-purple/10 border border-royal-purple/20 rounded-royal p-4"
+                >
+                  <p className="text-royal-purple font-medium text-center">
+                    Willkommen zurück, {user.name}! Hier ist Ihr Stempelpass:
+                  </p>
+                </motion.div>
+              )}
+
               {/* Loyalty Card Display */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -162,7 +314,7 @@ const Loyalty = () => {
               <div className="flex flex-col sm:flex-row gap-4">
                 <button
                   onClick={() => setShowHistory(!showHistory)}
-                  className="flex-1 bg-royal-gold text-royal-charcoal py-3 px-6 rounded-royal font-medium hover:bg-royal-gold/90 transition-colors duration-300 flex items-center justify-center space-x-2"
+                  className="flex-1 bg-royal-purple text-white py-3 px-6 rounded-royal font-medium hover:bg-royal-purple-light transition-colors duration-300 flex items-center justify-center space-x-2 royal-glow"
                 >
                   <History className="w-5 h-5" />
                   <span>
@@ -172,7 +324,7 @@ const Loyalty = () => {
 
                 <button
                   onClick={() => navigate("/menu")}
-                  className="flex-1 border-2 border-royal-gold text-royal-gold py-3 px-6 rounded-royal font-medium hover:bg-royal-gold hover:text-royal-charcoal transition-colors duration-300"
+                  className="flex-1 border-2 border-royal-purple text-royal-purple py-3 px-6 rounded-royal font-medium hover:bg-royal-purple hover:text-white transition-colors duration-300"
                 >
                   Zur Speisekarte
                 </button>
@@ -195,9 +347,9 @@ const Loyalty = () => {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="bg-white rounded-royal p-6 shadow-lg border border-royal-gold/20"
+                  className="bg-white rounded-royal p-6 shadow-lg border border-royal-purple/20"
                 >
-                  <h3 className="text-xl font-royal font-bold text-royal-charcoal mb-4 flex items-center space-x-2">
+                  <h3 className="text-xl font-royal font-bold text-royal-purple mb-4 flex items-center space-x-2">
                     <History className="w-5 h-5" />
                     <span>Stempel-Historie</span>
                   </h3>
@@ -221,10 +373,10 @@ const Loyalty = () => {
                             <div className="flex items-center space-x-3">
                               {getTransactionIcon(transaction.type)}
                               <div>
-                                <p className="font-medium text-gray-800">
+                                <p className="font-medium text-royal-charcoal">
                                   {transaction.description}
                                 </p>
-                                <p className="text-sm text-gray-600">
+                                <p className="text-sm text-royal-charcoal/60">
                                   {transaction.createdAt.toLocaleDateString(
                                     "de-DE",
                                     {
@@ -241,17 +393,17 @@ const Loyalty = () => {
 
                             <div className="text-right">
                               {transaction.stampsChanged > 0 && (
-                                <div className="text-green-600 font-bold">
+                                <div className="text-royal-purple font-bold">
                                   +{transaction.stampsChanged} Stempel
                                 </div>
                               )}
                               {transaction.type === "free_shisha_redeemed" && (
-                                <div className="text-blue-600 font-bold">
+                                <div className="text-royal-gold font-bold">
                                   -{transaction.shishaCount} Gratis
                                 </div>
                               )}
                               {transaction.type === "free_shisha_earned" && (
-                                <div className="text-green-600 font-bold">
+                                <div className="text-royal-purple-light font-bold">
                                   +{transaction.shishaCount} Gratis
                                 </div>
                               )}
@@ -269,7 +421,7 @@ const Loyalty = () => {
                 </motion.div>
               )}
             </div>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

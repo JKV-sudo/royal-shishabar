@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Mail, Lock, User, Eye, EyeOff, Crown } from "lucide-react";
+import { Mail, Lock, User, Eye, EyeOff, Crown, Phone } from "lucide-react";
 import SocialLoginButtons from "../components/auth/SocialLoginButtons";
 import { useAuthStore } from "../stores/authStore";
 import toast from "react-hot-toast";
@@ -15,6 +15,7 @@ const Auth = () => {
     email: "",
     password: "",
     name: "",
+    phone: "",
   });
 
   const {
@@ -50,7 +51,12 @@ const Auth = () => {
         toast.success("Welcome back!");
         navigate("/", { replace: true });
       } else if (mode === "register") {
-        await signUp(formData.email, formData.password, formData.name);
+        await signUp(
+          formData.email,
+          formData.password,
+          formData.name,
+          formData.phone
+        );
         toast.success("Account created successfully!");
         navigate("/", { replace: true });
       } else if (mode === "reset") {
@@ -159,6 +165,20 @@ const Auth = () => {
                 value={formData.name}
                 onChange={handleInputChange}
                 required={mode === "register"}
+                className="royal-input w-full pl-10 pr-4 py-3 text-royal-cream-light placeholder-royal-cream-light/60"
+              />
+            </div>
+          )}
+
+          {mode === "register" && (
+            <div className="relative">
+              <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-royal-cream-light w-5 h-5" />
+              <input
+                type="tel"
+                name="phone"
+                placeholder="Telefonnummer (optional)"
+                value={formData.phone}
+                onChange={handleInputChange}
                 className="royal-input w-full pl-10 pr-4 py-3 text-royal-cream-light placeholder-royal-cream-light/60"
               />
             </div>

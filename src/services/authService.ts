@@ -28,6 +28,7 @@ export interface UserData {
   id: string;
   email: string;
   name: string;
+  phone?: string;
   role: 'user' | 'admin';
   avatar?: string;
   createdAt: Date;
@@ -50,7 +51,8 @@ export class AuthService {
   static async signUp(
     email: string,
     password: string,
-    name: string
+    name: string,
+    phone?: string
   ): Promise<FirebaseUser> {
     try {
       const auth = getFirebaseAuth();
@@ -68,6 +70,7 @@ export class AuthService {
       const userData: Omit<UserData, 'id' | 'createdAt'> = {
         email: user.email!,
         name,
+        phone,
         role: 'user',
         avatar: user.photoURL || undefined,
       };
@@ -129,6 +132,7 @@ export class AuthService {
           id: userDoc.id,
           email: data.email,
           name: data.name,
+          phone: data.phone,
           role: data.role,
           avatar: data.avatar,
           createdAt: data.createdAt.toDate(),
@@ -164,6 +168,7 @@ export class AuthService {
             id: firebaseUser.uid,
             email: firebaseUser.email!,
             name: userData.name,
+            phone: userData.phone,
             role: userData.role,
             avatar: firebaseUser.photoURL || userData.avatar,
             createdAt: userData.createdAt,

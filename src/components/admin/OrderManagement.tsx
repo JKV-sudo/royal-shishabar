@@ -365,29 +365,29 @@ const OrderManagement: React.FC = () => {
                     className="hover:bg-royal-charcoal/5 transition-colors"
                   >
                     <td className="px-4 py-3">
-                      <span className="font-mono text-sm text-royal-charcoal/70">
+                      <span className="font-mono text-sm text-royal-cream/70">
                         #{order.id.slice(-8)}
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="bg-royal-gold/20 text-royal-charcoal px-2 py-1 rounded-full text-sm font-semibold">
+                      <span className="bg-royal-gold/20 text-royal-gold px-2 py-1 rounded-full text-sm font-semibold">
                         Tisch {order.tableNumber}
                       </span>
                     </td>
                     <td className="px-4 py-3">
                       <div>
-                        <p className="font-medium text-royal-charcoal">
+                        <p className="font-medium text-royal-cream">
                           {order.customerName || "Anonym"}
                         </p>
                         {order.customerPhone && (
-                          <p className="text-sm text-royal-charcoal/70">
+                          <p className="text-sm text-royal-cream/70">
                             {order.customerPhone}
                           </p>
                         )}
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="text-sm text-royal-charcoal/70">
+                      <div className="text-sm text-royal-cream/70">
                         <p>{getTotalItems(order)} Artikel</p>
                         <p className="text-xs">
                           {order.items
@@ -424,7 +424,7 @@ const OrderManagement: React.FC = () => {
                         {formatStatus(order.status)}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-royal-charcoal/70">
+                    <td className="px-4 py-3 text-sm text-royal-cream/70">
                       {format(order.createdAt, "dd.MM.yyyy HH:mm", {
                         locale: de,
                       })}
@@ -446,7 +446,7 @@ const OrderManagement: React.FC = () => {
                               e.target.value as OrderStatus
                             )
                           }
-                          className="text-xs border border-royal-gold/30 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-royal-gold/50"
+                          className="text-xs border border-royal-gold/30 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-royal-gold/50 bg-royal-charcoal text-royal-cream"
                         >
                           <option value="pending">Ausstehend</option>
                           <option value="confirmed">Bestätigt</option>
@@ -473,10 +473,8 @@ const OrderManagement: React.FC = () => {
 
         {orders.length === 0 && (
           <div className="text-center py-12">
-            <Package className="w-16 h-16 mx-auto text-royal-charcoal/30 mb-4" />
-            <p className="text-royal-charcoal/70">
-              Keine Bestellungen gefunden
-            </p>
+            <Package className="w-16 h-16 mx-auto text-royal-cream/30 mb-4" />
+            <p className="text-royal-cream/70">Keine Bestellungen gefunden</p>
           </div>
         )}
       </div>

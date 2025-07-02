@@ -6,6 +6,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  phone?: string;
   role: string;
   avatar?: string;
   createdAt: Date;
@@ -18,7 +19,7 @@ interface AuthState {
   setUser: (user: User) => void;
   logout: () => void;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name: string) => Promise<void>;
+  signUp: (email: string, password: string, name: string, phone?: string) => Promise<void>;
   signInWithSocial: (providerId: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
 }
@@ -46,6 +47,7 @@ export const useAuthStore = create<AuthState>((set) => ({
           id: firebaseUser.uid,
           email: firebaseUser.email!,
           name: userData.name,
+          phone: userData.phone,
           role: userData.role,
           avatar: firebaseUser.photoURL || userData.avatar,
           createdAt: userData.createdAt,
@@ -60,10 +62,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
   
-  signUp: async (email: string, password: string, name: string) => {
+  signUp: async (email: string, password: string, name: string, phone?: string) => {
     set({ isLoading: true });
     try {
-      const firebaseUser = await AuthService.signUp(email, password, name);
+      const firebaseUser = await AuthService.signUp(email, password, name, phone);
       const userData = await AuthService.getUserData(firebaseUser.uid);
       
       if (userData) {
@@ -71,6 +73,7 @@ export const useAuthStore = create<AuthState>((set) => ({
           id: firebaseUser.uid,
           email: firebaseUser.email!,
           name: userData.name,
+          phone: userData.phone,
           role: userData.role,
           avatar: firebaseUser.photoURL || userData.avatar,
           createdAt: userData.createdAt,

@@ -170,8 +170,8 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
             <div className="p-4 space-y-4 max-h-[60vh] overflow-y-auto">
               {state.items.length === 0 ? (
                 <div className="text-center py-8">
-                  <ShoppingCart className="w-16 h-16 mx-auto text-royal-charcoal/30 mb-4" />
-                  <p className="text-royal-charcoal/70">
+                  <ShoppingCart className="w-16 h-16 mx-auto text-gray-500 mb-4" />
+                  <p className="text-gray-700 font-medium">
                     Ihr Warenkorb ist leer
                   </p>
                 </div>
@@ -189,7 +189,7 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center space-x-2">
-                              <h3 className="font-semibold text-royal-charcoal">
+                              <h3 className="font-semibold text-gray-900">
                                 {item.name}
                               </h3>
                               {/* Loyalty Badge for Shisha Items */}
@@ -201,7 +201,7 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
                                 </div>
                               )}
                             </div>
-                            <p className="text-sm text-royal-charcoal/70">
+                            <p className="text-sm text-gray-700 font-medium">
                               {item.category}
                             </p>
                             {item.specialInstructions && (
@@ -228,7 +228,7 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
                             >
                               <Minus className="w-3 h-3" />
                             </button>
-                            <span className="font-semibold text-royal-charcoal w-8 text-center">
+                            <span className="font-semibold text-gray-900 w-8 text-center">
                               {item.quantity}
                             </span>
                             <button
@@ -261,17 +261,17 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
 
                     {/* Total Amount */}
                     <div className="space-y-2 mt-4">
-                      <div className="flex justify-between items-center text-royal-charcoal">
+                      <div className="flex justify-between items-center text-gray-800 font-medium">
                         <span>Zwischensumme:</span>
                         <span>{getTotalAmount().toFixed(2)}€</span>
                       </div>
                       {discountAmount > 0 && (
-                        <div className="flex justify-between items-center text-royal-purple">
+                        <div className="flex justify-between items-center text-royal-purple font-medium">
                           <span>Loyalty Rabatt:</span>
                           <span>-{discountAmount.toFixed(2)}€</span>
                         </div>
                       )}
-                      <div className="flex justify-between items-center text-lg font-bold text-royal-charcoal border-t border-royal-gold/20 pt-2">
+                      <div className="flex justify-between items-center text-lg font-bold text-gray-900 border-t border-royal-gold/20 pt-2">
                         <span>Gesamt:</span>
                         <span className="text-royal-gold">
                           {getFinalTotal().toFixed(2)}€
@@ -287,13 +287,13 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
                       animate={{ opacity: 1, height: "auto" }}
                       className="space-y-4 border-t border-royal-gold/20 pt-4"
                     >
-                      <h3 className="font-semibold text-royal-charcoal">
+                      <h3 className="font-semibold text-gray-900">
                         Bestelldetails
                       </h3>
 
                       {/* Table Number */}
                       <div className="space-y-2">
-                        <label className="flex items-center space-x-2 text-sm font-medium text-royal-charcoal">
+                        <label className="flex items-center space-x-2 text-sm font-medium text-gray-800">
                           <Hash className="w-4 h-4" />
                           <span>Tischnummer *</span>
                         </label>
@@ -305,7 +305,7 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
                           onChange={(e) =>
                             setTableNumber(parseInt(e.target.value) || 0)
                           }
-                          className="w-full p-3 border border-royal-gold/30 rounded-royal bg-white text-royal-charcoal focus:outline-none focus:ring-2 focus:ring-royal-gold/50"
+                          className="w-full p-3 border border-gray-300 rounded-royal bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-royal-purple focus:border-royal-purple transition-colors"
                           placeholder="z.B. 5"
                           required
                         />
@@ -313,7 +313,7 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
 
                       {/* Customer Name */}
                       <div className="space-y-2">
-                        <label className="flex items-center space-x-2 text-sm font-medium text-royal-charcoal">
+                        <label className="flex items-center space-x-2 text-sm font-medium text-gray-800">
                           <User className="w-4 h-4" />
                           <span>Name (optional)</span>
                         </label>
@@ -323,14 +323,14 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
                           onChange={(e) =>
                             setCustomerInfo(e.target.value, state.customerPhone)
                           }
-                          className="w-full p-3 border border-royal-gold/30 rounded-royal bg-white text-royal-charcoal focus:outline-none focus:ring-2 focus:ring-royal-gold/50"
+                          className="w-full p-3 border border-gray-300 rounded-royal bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-royal-purple focus:border-royal-purple transition-colors"
                           placeholder="Ihr Name"
                         />
                       </div>
 
                       {/* Customer Phone */}
                       <div className="space-y-2">
-                        <label className="flex items-center space-x-2 text-sm font-medium text-royal-charcoal">
+                        <label className="flex items-center space-x-2 text-sm font-medium text-gray-800">
                           <Phone className="w-4 h-4" />
                           <span>Telefon (optional)</span>
                         </label>
@@ -340,14 +340,14 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
                           onChange={(e) =>
                             setCustomerInfo(state.customerName, e.target.value)
                           }
-                          className="w-full p-3 border border-royal-gold/30 rounded-royal bg-white text-royal-charcoal focus:outline-none focus:ring-2 focus:ring-royal-gold/50"
+                          className="w-full p-3 border border-gray-300 rounded-royal bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-royal-purple focus:border-royal-purple transition-colors"
                           placeholder="+49 15781413767"
                         />
                       </div>
 
                       {/* Special Instructions */}
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-royal-charcoal">
+                        <label className="text-sm font-medium text-gray-800">
                           Spezielle Anweisungen (optional)
                         </label>
                         <textarea
@@ -355,7 +355,7 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
                           onChange={(e) =>
                             setSpecialInstructions(e.target.value)
                           }
-                          className="w-full p-3 border border-royal-gold/30 rounded-royal bg-white text-royal-charcoal focus:outline-none focus:ring-2 focus:ring-royal-gold/50 resize-none"
+                          className="w-full p-3 border border-gray-300 rounded-royal bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-royal-purple focus:border-royal-purple transition-colors resize-none"
                           rows={3}
                           placeholder="Zusätzliche Anweisungen für Ihre Bestellung..."
                         />
