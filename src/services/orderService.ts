@@ -14,21 +14,70 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { getFirestoreDB } from '../config/firebase';
-import { Order, OrderStatus, OrderStats, OrderFilters } from '../types/order';
+import { Order, OrderStatus, OrderStats, OrderFilters, PaymentStatus, PaymentMethod, PaymentInfo } from '../types/order';
 import { LoyaltyService } from './loyaltyService';
+import { safeToDate, safeToDateWithFallback } from '../utils/dateUtils';
 
 export class OrderService {
   private static collectionName = 'orders';
 
   // Helper function to remove undefined values from object
   private static removeUndefinedValues(obj: any): any {
+    if (!obj || typeof obj !== 'object') {
+      return obj;
+    }
+
     const cleaned: any = {};
     Object.keys(obj).forEach(key => {
-      if (obj[key] !== undefined && obj[key] !== null) {
-        cleaned[key] = obj[key];
+      const value = obj[key];
+      
+      // Skip only undefined values (allow null, empty strings, 0, false)
+      if (value === undefined) {
+        return;
+      }
+
+      // Handle arrays
+      if (Array.isArray(value)) {
+        const cleanedArray = value.map(item => 
+          typeof item === 'object' ? this.removeUndefinedValues(item) : item
+        ).filter(item => item !== undefined);
+        cleaned[key] = cleanedArray;
+      }
+      // Handle nested objects (but not Date objects or Firestore special objects)
+      else if (typeof value === 'object' && value !== null && !(value instanceof Date) && !value?.toDate && !value?.isEqual) {
+        const cleanedNested = this.removeUndefinedValues(value);
+        if (cleanedNested && Object.keys(cleanedNested).length > 0) {
+          cleaned[key] = cleanedNested;
+        }
+      }
+      // Handle primitive values and special objects (Date, Timestamp, etc.)
+      else {
+        cleaned[key] = value;
       }
     });
+    
     return cleaned;
+  }
+
+  // Safe date conversion specifically for order data
+  private static convertOrderDates(data: any): any {
+    const converted = {
+      ...data,
+      createdAt: safeToDateWithFallback(data.createdAt),
+      updatedAt: safeToDateWithFallback(data.updatedAt),
+      estimatedCompletionTime: safeToDate(data.estimatedCompletionTime),
+      completedAt: safeToDate(data.completedAt),
+    };
+
+    // Ensure payment object exists with default values
+    if (!converted.payment) {
+      converted.payment = {
+        status: 'unpaid' as PaymentStatus,
+        amount: converted.totalAmount || 0,
+      };
+    }
+
+    return converted;
   }
 
   // Create a new order
@@ -36,17 +85,32 @@ export class OrderService {
     try {
       const db = getFirestoreDB();
       
-      // Clean the order data by removing undefined values
-      const cleanedOrderData = this.removeUndefinedValues({
+      console.log('🔍 Creating order with raw data:', orderData);
+      
+      // Ensure payment object exists with proper defaults
+      const orderWithPayment = {
         ...orderData,
+        payment: orderData.payment || {
+          status: 'unpaid' as PaymentStatus,
+          amount: orderData.totalAmount || 0,
+        },
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      });
+      };
+      
+      // Clean the order data by removing undefined values
+      const cleanedOrderData = this.removeUndefinedValues(orderWithPayment);
+
+      console.log('✅ Cleaned order data:', cleanedOrderData);
 
       const docRef = await addDoc(collection(db, this.collectionName), cleanedOrderData);
+      console.log('🎉 Order created successfully with ID:', docRef.id);
       return docRef.id;
     } catch (error) {
-      console.error('Error creating order:', error);
+      import('../utils/productionLogger').then(({ logger }) => {
+        logger.error('Error creating order:', error);
+        logger.debug('Order data that failed:', orderData);
+      });
       throw error;
     }
   }
@@ -60,11 +124,7 @@ export class OrderService {
         const data = doc.data();
         return {
           id: doc.id,
-          ...data,
-          createdAt: data.createdAt?.toDate() || new Date(),
-          updatedAt: data.updatedAt?.toDate() || new Date(),
-          estimatedCompletionTime: data.estimatedCompletionTime?.toDate(),
-          completedAt: data.completedAt?.toDate(),
+          ...this.convertOrderDates(data),
         } as Order;
       });
     } catch (error) {
@@ -76,6 +136,7 @@ export class OrderService {
   // Get orders with filters
   static async getOrdersWithFilters(filters: OrderFilters): Promise<Order[]> {
     try {
+      console.log('🔍 Loading orders with filters:', filters);
       const db = getFirestoreDB();
       const collectionRef = collection(db, this.collectionName);
       let q: any = collectionRef;
@@ -83,6 +144,9 @@ export class OrderService {
       // Apply filters
       if (filters.status) {
         q = query(q, where('status', '==', filters.status));
+      }
+      if (filters.paymentStatus) {
+        q = query(q, where('payment.status', '==', filters.paymentStatus));
       }
       if (filters.tableNumber) {
         q = query(q, where('tableNumber', '==', filters.tableNumber));
@@ -102,11 +166,7 @@ export class OrderService {
         const data = doc.data() as any;
         return {
           id: doc.id,
-          ...data,
-          createdAt: data.createdAt?.toDate() || new Date(),
-          updatedAt: data.updatedAt?.toDate() || new Date(),
-          estimatedCompletionTime: data.estimatedCompletionTime?.toDate(),
-          completedAt: data.completedAt?.toDate(),
+          ...this.convertOrderDates(data),
         } as Order;
       });
 
@@ -120,9 +180,10 @@ export class OrderService {
         );
       }
 
+      console.log('✅ Orders loaded successfully:', orders.length, 'orders');
       return orders;
     } catch (error) {
-      console.error('Error getting orders with filters:', error);
+      console.error('❌ Error getting orders with filters:', error);
       throw error;
     }
   }
@@ -138,11 +199,7 @@ export class OrderService {
         const data = docSnap.data();
         return {
           id: docSnap.id,
-          ...data,
-          createdAt: data.createdAt?.toDate() || new Date(),
-          updatedAt: data.updatedAt?.toDate() || new Date(),
-          estimatedCompletionTime: data.estimatedCompletionTime?.toDate(),
-          completedAt: data.completedAt?.toDate(),
+          ...this.convertOrderDates(data),
         } as Order;
       }
       return null;
@@ -249,6 +306,141 @@ export class OrderService {
     }
   }
 
+  // Process payment for an order
+  static async processPayment(
+    orderId: string, 
+    paymentData: {
+      method: PaymentMethod;
+      amount: number;
+      transactionId?: string;
+      processedBy: string;
+      notes?: string;
+    }
+  ): Promise<void> {
+    try {
+      const db = getFirestoreDB();
+      const docRef = doc(db, this.collectionName, orderId);
+      
+      const paymentInfo: PaymentInfo = {
+        status: 'paid',
+        method: paymentData.method,
+        amount: paymentData.amount,
+        paidAt: new Date(),
+        transactionId: paymentData.transactionId,
+        processedBy: paymentData.processedBy,
+        notes: paymentData.notes,
+      };
+
+      const updateData = this.removeUndefinedValues({
+        payment: paymentInfo,
+        updatedAt: serverTimestamp(),
+      });
+
+      await updateDoc(docRef, updateData);
+      console.log(`Payment processed for order ${orderId}`);
+    } catch (error) {
+      console.error('Error processing payment:', error);
+      throw error;
+    }
+  }
+
+  // Update payment status
+  static async updatePaymentStatus(orderId: string, status: PaymentStatus): Promise<void> {
+    try {
+      const db = getFirestoreDB();
+      const docRef = doc(db, this.collectionName, orderId);
+      
+      const updateData = this.removeUndefinedValues({
+        'payment.status': status,
+        updatedAt: serverTimestamp(),
+      });
+
+      await updateDoc(docRef, updateData);
+      console.log(`Payment status updated to ${status} for order ${orderId}`);
+    } catch (error) {
+      console.error('Error updating payment status:', error);
+      throw error;
+    }
+  }
+
+  // Process refund
+  static async processRefund(
+    orderId: string,
+    refundData: {
+      amount: number;
+      reason: string;
+      processedBy: string;
+    }
+  ): Promise<void> {
+    try {
+      const db = getFirestoreDB();
+      const docRef = doc(db, this.collectionName, orderId);
+      
+      const updateData = this.removeUndefinedValues({
+        'payment.status': 'refunded' as PaymentStatus,
+        'payment.refundAmount': refundData.amount,
+        'payment.refundReason': refundData.reason,
+        'payment.refundedBy': refundData.processedBy,
+        'payment.refundedAt': new Date(),
+        updatedAt: serverTimestamp(),
+      });
+
+      await updateDoc(docRef, updateData);
+      console.log(`Refund processed for order ${orderId}: €${refundData.amount}`);
+    } catch (error) {
+      console.error('Error processing refund:', error);
+      throw error;
+    }
+  }
+
+  // Get unpaid orders for a table
+  static async getUnpaidOrdersForTable(tableNumber: number): Promise<Order[]> {
+    try {
+      const db = getFirestoreDB();
+      const q = query(
+        collection(db, this.collectionName),
+        where('tableNumber', '==', tableNumber),
+        where('payment.status', 'in', ['unpaid', 'partial'])
+      );
+
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...this.convertOrderDates(data),
+        } as Order;
+      });
+    } catch (error) {
+      console.error('Error getting unpaid orders for table:', error);
+      throw error;
+    }
+  }
+
+  // Get unpaid orders for a reservation
+  static async getUnpaidOrdersForReservation(reservationId: string): Promise<Order[]> {
+    try {
+      const db = getFirestoreDB();
+      const q = query(
+        collection(db, this.collectionName),
+        where('reservationId', '==', reservationId),
+        where('payment.status', 'in', ['unpaid', 'partial'])
+      );
+
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...this.convertOrderDates(data),
+        } as Order;
+      });
+    } catch (error) {
+      console.error('Error getting unpaid orders for reservation:', error);
+      throw error;
+    }
+  }
+
   // Delete order
   static async deleteOrder(id: string): Promise<void> {
     try {
@@ -266,29 +458,22 @@ export class OrderService {
     try {
       const orders = await this.getOrders();
       
-      const totalOrders = orders.length;
-      const pendingOrders = orders.filter(o => o.status === 'pending').length;
-      const preparingOrders = orders.filter(o => o.status === 'preparing').length;
-      const readyOrders = orders.filter(o => o.status === 'ready').length;
-      const deliveredOrders = orders.filter(o => o.status === 'delivered').length;
-      const cancelledOrders = orders.filter(o => o.status === 'cancelled').length;
-      
-      const totalRevenue = orders
-        .filter(o => o.status === 'delivered')
-        .reduce((sum, order) => sum + order.totalAmount, 0);
-      
-      const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-
-      return {
-        totalOrders,
-        pendingOrders,
-        preparingOrders,
-        readyOrders,
-        deliveredOrders,
-        cancelledOrders,
-        totalRevenue,
-        averageOrderValue,
+      const stats: OrderStats = {
+        totalOrders: orders.length,
+        pendingOrders: orders.filter(o => o.status === 'pending').length,
+        preparingOrders: orders.filter(o => o.status === 'preparing').length,
+        readyOrders: orders.filter(o => o.status === 'ready').length,
+        deliveredOrders: orders.filter(o => o.status === 'delivered').length,
+        cancelledOrders: orders.filter(o => o.status === 'cancelled').length,
+        paidOrders: orders.filter(o => o.payment?.status === 'paid').length,
+        unpaidOrders: orders.filter(o => o.payment?.status === 'unpaid').length,
+        totalRevenue: orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0),
+        paidRevenue: orders.filter(o => o.payment?.status === 'paid').reduce((sum, order) => sum + (order.totalAmount || 0), 0),
+        unpaidRevenue: orders.filter(o => o.payment?.status === 'unpaid').reduce((sum, order) => sum + (order.totalAmount || 0), 0),
+        averageOrderValue: orders.length > 0 ? orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0) / orders.length : 0,
       };
+
+      return stats;
     } catch (error) {
       console.error('Error getting order stats:', error);
       throw error;
@@ -305,11 +490,7 @@ export class OrderService {
         const data = doc.data();
         return {
           id: doc.id,
-          ...data,
-          createdAt: data.createdAt?.toDate() || new Date(),
-          updatedAt: data.updatedAt?.toDate() || new Date(),
-          estimatedCompletionTime: data.estimatedCompletionTime?.toDate(),
-          completedAt: data.completedAt?.toDate(),
+          ...this.convertOrderDates(data),
         } as Order;
       });
       callback(orders);
@@ -351,11 +532,7 @@ export class OrderService {
         const data = doc.data() as any;
         return {
           id: doc.id,
-          ...data,
-          createdAt: data.createdAt?.toDate() || new Date(),
-          updatedAt: data.updatedAt?.toDate() || new Date(),
-          estimatedCompletionTime: data.estimatedCompletionTime?.toDate(),
-          completedAt: data.completedAt?.toDate(),
+          ...this.convertOrderDates(data),
         } as Order;
       });
 
@@ -376,4 +553,4 @@ export class OrderService {
 
     return unsubscribe;
   }
-} 
+}

@@ -4,28 +4,153 @@ service cloud.firestore {
     // Users can read and write their own data
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
-      allow read: if request.auth != null && resource.data.role == 'admin';
+      
+      // Allow authenticated users to read user documents for role checking
+      // This is needed so other collections can check admin roles via get() calls
+      allow read: if request.auth != null;
+      
+      // Allow known admin emails to create/update their own user documents (bootstrapping)
+      allow write: if request.auth != null && 
+        request.auth.uid == userId &&
+        (request.auth.token.email == 'admin@royal-shishabar.com' ||
+         request.auth.token.email == 'royal.waldkraiburg@gmail.com' ||
+         request.auth.token.email == 'jacob-s@live.de');
+      
+      // Only existing admins can write to other users' documents
+      allow write: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // GDPR Cookie Consents - users can read/write their own, admins can read all
+    match /cookie_consents/{consentId} {
+      allow read, write: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null && 
+        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+         (request.auth.token.email == 'admin@royal-shishabar.com' ||
+          request.auth.token.email == 'royal.waldkraiburg@gmail.com' ||
+          request.auth.token.email == 'jacob-s@live.de'));
+    }
+
+    // GDPR Privacy Settings - users can read/write their own, admins can read all
+    match /privacy_settings/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && 
+        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+         (request.auth.token.email == 'admin@royal-shishabar.com' ||
+          request.auth.token.email == 'royal.waldkraiburg@gmail.com' ||
+          request.auth.token.email == 'jacob-s@live.de'));
+    }
+
+    // GDPR Data Export Requests - users can create and read their own, admins can read/write all
+    match /data_export_requests/{requestId} {
+      allow create: if request.auth != null && 
+        request.resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+      allow read, write: if request.auth != null && 
+        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+         (request.auth.token.email == 'admin@royal-shishabar.com' ||
+          request.auth.token.email == 'royal.waldkraiburg@gmail.com' ||
+          request.auth.token.email == 'jacob-s@live.de'));
+    }
+
+    // GDPR Data Deletion Requests - users can create and read their own, admins can read/write all
+    match /data_deletion_requests/{requestId} {
+      allow create: if request.auth != null && 
+        request.resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+      allow read, write: if request.auth != null && 
+        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+         (request.auth.token.email == 'admin@royal-shishabar.com' ||
+          request.auth.token.email == 'royal.waldkraiburg@gmail.com' ||
+          request.auth.token.email == 'jacob-s@live.de'));
+    }
+
+    // GDPR Consent Records - users can create and read their own, admins can read/write all
+    match /consent_records/{recordId} {
+      allow create: if request.auth != null && 
+        request.resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+      allow read, write: if request.auth != null && 
+        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+         (request.auth.token.email == 'admin@royal-shishabar.com' ||
+          request.auth.token.email == 'royal.waldkraiburg@gmail.com' ||
+          request.auth.token.email == 'jacob-s@live.de'));
+    }
+
+    // GDPR Audit Log - users can read entries where they are the subject, admins can read/write all
+    match /audit_log/{logId} {
+      allow read: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+      allow read, write: if request.auth != null && 
+        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+         (request.auth.token.email == 'admin@royal-shishabar.com' ||
+          request.auth.token.email == 'royal.waldkraiburg@gmail.com' ||
+          request.auth.token.email == 'jacob-s@live.de'));
+    }
+
+    // Analytics collection - only admins can access
+    match /analytics/{document} {
+      allow read, write: if request.auth != null && 
+        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+         (request.auth.token.email == 'admin@royal-shishabar.com' ||
+          request.auth.token.email == 'royal.waldkraiburg@gmail.com' ||
+          request.auth.token.email == 'jacob-s@live.de'));
     }
 
     // Popups - anyone can read active popups, only admins can write
     match /popups/{popupId} {
       allow read: if true; // Anyone can read popups
       allow write: if request.auth != null && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+         (request.auth.token.email == 'admin@royal-shishabar.com' ||
+          request.auth.token.email == 'royal.waldkraiburg@gmail.com' ||
+          request.auth.token.email == 'jacob-s@live.de'));
     }
 
     // Menu items - anyone can read, only admins can write
+    match /menuItems/{itemId} {
+      allow read: if true;
+      allow write: if request.auth != null && 
+        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+         (request.auth.token.email == 'admin@royal-shishabar.com' ||
+          request.auth.token.email == 'royal.waldkraiburg@gmail.com' ||
+          request.auth.token.email == 'jacob-s@live.de'));
+    }
+
+    // Menu collection - anyone can read, only admins can write
     match /menu/{itemId} {
       allow read: if true;
       allow write: if request.auth != null && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+         (request.auth.token.email == 'admin@royal-shishabar.com' ||
+          request.auth.token.email == 'royal.waldkraiburg@gmail.com' ||
+          request.auth.token.email == 'jacob-s@live.de'));
     }
 
     // Special offers - anyone can read active offers, only admins can write
-    match /specialOffers/{offerId} {
+    match /special_offers/{offerId} {
       allow read: if true;
       allow write: if request.auth != null && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+         (request.auth.token.email == 'admin@royal-shishabar.com' ||
+          request.auth.token.email == 'royal.waldkraiburg@gmail.com' ||
+          request.auth.token.email == 'jacob-s@live.de'));
     }
 
     // Reviews - anyone can read, authenticated users can write their own
@@ -35,37 +160,78 @@ service cloud.firestore {
       allow update, delete: if request.auth != null && 
         resource.data.userId == request.auth.uid;
       allow update, delete: if request.auth != null && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+         (request.auth.token.email == 'admin@royal-shishabar.com' ||
+          request.auth.token.email == 'royal.waldkraiburg@gmail.com' ||
+          request.auth.token.email == 'jacob-s@live.de'));
     }
 
     // Events: public read access, admin write access
     match /events/{eventId} {
       // Anyone can read events (public access)
       allow read: if true;
-      
-      // Only authenticated users can write (create, update, delete)
       allow write: if request.auth != null && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+         (request.auth.token.email == 'admin@royal-shishabar.com' ||
+          request.auth.token.email == 'royal.waldkraiburg@gmail.com' ||
+          request.auth.token.email == 'jacob-s@live.de'));
     }
 
-    // Reservations - users can read/write their own, staff can read all
+    // Reservations - public read for availability checking, users can read/write their own, staff can read all
     match /reservations/{reservationId} {
-      allow read, write: if request.auth != null && 
+      // Allow public read access for table availability checking
+      // Note: Client should only access tableId, timeSlot, status, date fields for availability
+      allow read: if true;
+      
+      // Users can create reservations when authenticated
+      allow create: if request.auth != null;
+      
+      // Users can read/write their own reservations
+      allow update, delete: if request.auth != null && 
         resource.data.userId == request.auth.uid;
-      allow read: if request.auth != null && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        
+      // Admins can read/write all reservations
+      allow read, write: if request.auth != null && 
+        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+         (request.auth.token.email == 'admin@royal-shishabar.com' ||
+          request.auth.token.email == 'royal.waldkraiburg@gmail.com' ||
+          request.auth.token.email == 'jacob-s@live.de'));
     }
 
-    // Orders - users can read/write their own, staff can read all
+    // Orders - anyone can create orders, staff can read/manage all orders
     match /orders/{orderId} {
+      // Anyone can create orders (walk-in customers might not be authenticated)
+      allow create: if true;
+      
+      // Temporary: Known admin UID gets full access (debugging)
       allow read, write: if request.auth != null && 
-        resource.data.userId == request.auth.uid;
+        request.auth.uid == 'ennEe3tGViSJqHteUS2KT0OPMKM2';
+      
+      // Known admin emails get full access (bootstrapping)
+      allow read, write: if request.auth != null && 
+        (request.auth.token.email == 'admin@royal-shishabar.com' ||
+         request.auth.token.email == 'royal.waldkraiburg@gmail.com' ||
+         request.auth.token.email == 'jacob-s@live.de');
+      
+      // Staff and admins can read and manage all orders
+      allow read, write: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'staff' ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+         
+      // Authenticated users can read orders if they have matching customer info
       allow read: if request.auth != null && 
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'staff' ||
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
-      allow write: if request.auth != null && 
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'staff' ||
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+        (resource.data.customerPhone == request.auth.phoneNumber ||
+         resource.data.customerEmail == request.auth.email);
+         
+      // Authenticated users can read orders linked to their reservations
+      allow read: if request.auth != null && 
+        resource.data.reservationId != null &&
+        exists(/databases/$(database)/documents/reservations/$(resource.data.reservationId)) &&
+        get(/databases/$(database)/documents/reservations/$(resource.data.reservationId)).data.userId == request.auth.uid;
     }
 
     // Spotify playlists - anyone can read, authenticated users can add songs
@@ -80,7 +246,45 @@ service cloud.firestore {
       allow create: if request.auth != null;
       allow update, delete: if request.auth != null && 
         (resource.data.userId == request.auth.uid ||
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+         ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+          (request.auth.token.email == 'admin@royal-shishabar.com' ||
+           request.auth.token.email == 'royal.waldkraiburg@gmail.com' ||
+           request.auth.token.email == 'jacob-s@live.de')));
+    }
+
+    // Tables - anyone can read, only admins can write
+    match /tables/{tableId} {
+      allow read: if true;
+      allow write: if request.auth != null && 
+        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+         (request.auth.token.email == 'admin@royal-shishabar.com' ||
+          request.auth.token.email == 'royal.waldkraiburg@gmail.com' ||
+          request.auth.token.email == 'jacob-s@live.de'));
+    }
+
+    // Time slots - anyone can read, only admins can write
+    match /timeSlots/{slotId} {
+      allow read: if true;
+      allow write: if request.auth != null && 
+        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+         (request.auth.token.email == 'admin@royal-shishabar.com' ||
+          request.auth.token.email == 'royal.waldkraiburg@gmail.com' ||
+          request.auth.token.email == 'jacob-s@live.de'));
+    }
+
+    // Loyalty cards - anyone can read when authenticated, admins can write
+    match /loyaltyCards/{cardId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // Loyalty transactions - anyone can read when authenticated, write for transactions
+    match /loyaltyTransactions/{transactionId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
     }
   }
 } 

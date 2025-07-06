@@ -213,24 +213,24 @@ const Footer = () => {
             vorbehalten.
           </p>
           <div className="mt-2 flex justify-center space-x-4 text-xs text-royal-cream-light/60">
-            <a
-              href="#"
+            <Link
+              to="/privacy-policy"
               className="hover:text-royal-gold transition-colors duration-200"
             >
               Datenschutz
-            </a>
-            <a
-              href="#"
+            </Link>
+            <Link
+              to="/impressum"
               className="hover:text-royal-gold transition-colors duration-200"
             >
               Impressum
-            </a>
-            <a
-              href="#"
+            </Link>
+            <Link
+              to="/agb"
               className="hover:text-royal-gold transition-colors duration-200"
             >
               AGB
-            </a>
+            </Link>
           </div>
         </motion.div>
       </div>

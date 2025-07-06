@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { AuthService } from '../services/authService';
 import { SocialAuthService } from '../services/socialAuthService';
+import { CookieAuthService } from '../services/cookieAuthService';
 
 export interface User {
   id: string;
@@ -16,12 +17,13 @@ interface AuthState {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  setUser: (user: User) => void;
+  setUser: (user: User | null) => void;
   logout: () => void;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name: string, phone?: string) => Promise<void>;
   signInWithSocial: (providerId: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  initializeFromCookie: () => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -29,10 +31,30 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoading: false,
   isAuthenticated: false,
   
-  setUser: (user) => set({ user, isAuthenticated: true }),
+  // Initialize auth state from cookie on app start
+  initializeFromCookie: () => {
+    const cachedSession = CookieAuthService.loadSession();
+    if (cachedSession) {
+      console.log('🍪 Initializing auth state from cookie');
+      const user = CookieAuthService.sessionToUser(cachedSession);
+      set({ user, isAuthenticated: true });
+    }
+  },
+  
+  setUser: (user) => {
+    set({ user, isAuthenticated: !!user });
+    
+    // Save to cookie whenever user state changes
+    if (user) {
+      CookieAuthService.saveSession(user);
+    } else {
+      CookieAuthService.clearSession();
+    }
+  },
   
   logout: () => {
     AuthService.signOut();
+    CookieAuthService.clearSession();
     set({ user: null, isAuthenticated: false });
   },
   
@@ -52,7 +74,9 @@ export const useAuthStore = create<AuthState>((set) => ({
           avatar: firebaseUser.photoURL || userData.avatar,
           createdAt: userData.createdAt,
         };
+        
         set({ user, isLoading: false, isAuthenticated: true });
+        CookieAuthService.saveSession(user);
       } else {
         throw new Error('User data not found');
       }
@@ -78,7 +102,9 @@ export const useAuthStore = create<AuthState>((set) => ({
           avatar: firebaseUser.photoURL || userData.avatar,
           createdAt: userData.createdAt,
         };
+        
         set({ user, isLoading: false, isAuthenticated: true });
+        CookieAuthService.saveSession(user);
       } else {
         throw new Error('User data not found');
       }
@@ -87,26 +113,38 @@ export const useAuthStore = create<AuthState>((set) => ({
       throw error;
     }
   },
-  
+
+  // Helper functions for quick role checks
   signInWithSocial: async (providerId: string) => {
     set({ isLoading: true });
     try {
       const user = await SocialAuthService.signInWithProvider(providerId);
       set({ user, isLoading: false, isAuthenticated: true });
+      CookieAuthService.saveSession(user);
     } catch (error) {
       set({ isLoading: false });
       throw error;
     }
   },
-  
+
   resetPassword: async (email: string) => {
-    set({ isLoading: true });
-    try {
-      await AuthService.resetPassword(email);
-      set({ isLoading: false });
-    } catch (error) {
-      set({ isLoading: false });
-      throw error;
-    }
+    await AuthService.resetPassword(email);
   },
 }));
+
+// Helper functions for quick access (can be used outside components)
+export const isUserAdmin = (): boolean => {
+  return CookieAuthService.isAdmin();
+};
+
+export const isUserStaffOrAdmin = (): boolean => {
+  return CookieAuthService.isStaffOrAdmin();
+};
+
+export const getUserRole = (): string | null => {
+  return CookieAuthService.getUserRole();
+};
+
+export const isUserAuthenticated = (): boolean => {
+  return CookieAuthService.isAuthenticated();
+};

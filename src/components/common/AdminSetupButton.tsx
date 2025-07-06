@@ -1,95 +1,128 @@
 import React, { useState } from "react";
-import { promoteCurrentUserToAdmin } from "../../utils/adminSetup";
+import { motion } from "framer-motion";
+import { Settings, Crown, Calendar } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
-import { eventNotificationManager } from "../../utils/eventNotifications";
-import { toast } from "react-hot-toast";
+import {
+  initializeReservationTables,
+  initializeReservationTimeSlots,
+} from "../../utils/initializeReservationData";
+// import { initializeSampleEvents } from "../../utils/sampleEvents";
+import toast from "react-hot-toast";
 
 const AdminSetupButton: React.FC = () => {
   const { user } = useAuthStore();
+  const [isExpanded, setIsExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isNotificationLoading, setIsNotificationLoading] = useState(false);
 
-  // Only show in development mode
-  if (!import.meta.env.DEV) {
+  // Only show for admin users
+  if (!user || user.role !== "admin") {
     return null;
   }
 
-  const handlePromoteToAdmin = async () => {
-    if (!user) {
-      toast.error("Please log in first");
-      return;
-    }
-
-    setIsLoading(true);
+  const handleInitializeTables = async () => {
     try {
-      const success = await promoteCurrentUserToAdmin();
-      if (success) {
-        toast.success("Promoted to admin! Please refresh the page.");
-      } else {
-        toast.error("Failed to promote to admin");
-      }
+      setIsLoading(true);
+      await initializeReservationTables();
+      toast.success("Tables initialized successfully!");
     } catch (error) {
-      toast.error("Error promoting to admin");
-      console.error("Error:", error);
+      console.error("Tables initialization failed:", error);
+      toast.error("Tables initialization failed");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleTestNotification = async () => {
-    setIsNotificationLoading(true);
+  const handleInitializeTimeSlots = async () => {
     try {
-      await eventNotificationManager.createTestEventNotification();
-      toast.success("Test notification created! Check the popup.");
+      setIsLoading(true);
+      await initializeReservationTimeSlots();
+      toast.success("Time slots initialized successfully!");
     } catch (error) {
-      toast.error("Failed to create test notification");
-      console.error("Error:", error);
+      console.error("Time slots initialization failed:", error);
+      toast.error("Time slots initialization failed");
     } finally {
-      setIsNotificationLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const handleTriggerUpcomingNotification = async () => {
-    setIsNotificationLoading(true);
-    try {
-      await eventNotificationManager.triggerUpcomingEventNotification();
-      toast.success("Upcoming event notification triggered!");
-    } catch (error) {
-      toast.error("Failed to trigger upcoming notification");
-      console.error("Error:", error);
-    } finally {
-      setIsNotificationLoading(false);
-    }
-  };
+  // const handleInitializeSampleEvents = async () => {
+  //   try {
+  //     setIsLoading(true);
+  //     await initializeSampleEvents();
+  //     toast.success("Sample events created successfully!");
+  //   } catch (error) {
+  //     console.error("Sample events creation failed:", error);
+  //     toast.error("Sample events creation failed");
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
 
   return (
-    <div className="fixed bottom-4 left-4 bg-yellow-500 text-white p-4 rounded-lg shadow-lg z-50 max-w-xs">
-      <div className="text-xs font-bold mb-3">DEV MODE</div>
-      <div className="space-y-2">
-        <button
-          onClick={handlePromoteToAdmin}
-          disabled={isLoading}
-          className="w-full px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors disabled:opacity-50"
+    <div className="fixed bottom-4 left-4 z-50">
+      <motion.div
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        className="relative"
+      >
+        {/* Main Button */}
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="w-14 h-14 bg-royal-gradient-gold rounded-full flex items-center justify-center text-royal-charcoal royal-glow shadow-lg"
         >
-          {isLoading ? "Promoting..." : "Make Me Admin"}
-        </button>
+          <Settings className="w-6 h-6" />
+        </motion.button>
 
-        <button
-          onClick={handleTestNotification}
-          disabled={isNotificationLoading}
-          className="w-full px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
-        >
-          {isNotificationLoading ? "Creating..." : "Test Event Notification"}
-        </button>
+        {/* Expanded Menu */}
+        {isExpanded && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="absolute bottom-16 left-0 bg-royal-charcoal-dark rounded-lg p-4 shadow-xl border border-royal-gold/30 w-64"
+          >
+            <div className="flex items-center space-x-2 mb-4">
+              <Crown className="w-5 h-5 text-royal-gold" />
+              <span className="text-royal-cream font-semibold">
+                Admin Setup
+              </span>
+            </div>
 
-        <button
-          onClick={handleTriggerUpcomingNotification}
-          disabled={isNotificationLoading}
-          className="w-full px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors disabled:opacity-50"
-        >
-          {isNotificationLoading ? "Triggering..." : "Trigger Upcoming Event"}
-        </button>
-      </div>
+            <div className="space-y-3">
+              {/* Initialize Tables */}
+              <button
+                onClick={handleInitializeTables}
+                disabled={isLoading}
+                className="w-full flex items-center space-x-2 px-3 py-2 bg-royal-charcoal hover:bg-royal-charcoal-light rounded-lg text-royal-cream transition-colors disabled:opacity-50"
+              >
+                <Calendar className="w-4 h-4" />
+                <span>Initialize Tables</span>
+              </button>
+
+              {/* Initialize Time Slots */}
+              <button
+                onClick={handleInitializeTimeSlots}
+                disabled={isLoading}
+                className="w-full flex items-center space-x-2 px-3 py-2 bg-royal-charcoal hover:bg-royal-charcoal-light rounded-lg text-royal-cream transition-colors disabled:opacity-50"
+              >
+                <Calendar className="w-4 h-4" />
+                <span>Initialize Time Slots</span>
+              </button>
+
+              {/* Sample Events - Temporarily disabled */}
+              {/* <button
+                 onClick={handleInitializeSampleEvents}
+                 disabled={isLoading}
+                 className="w-full flex items-center space-x-2 px-3 py-2 bg-royal-charcoal hover:bg-royal-charcoal-light rounded-lg text-royal-cream transition-colors disabled:opacity-50"
+               >
+                 <Plus className="w-4 h-4" />
+                 <span>Create Sample Events</span>
+               </button> */}
+            </div>
+          </motion.div>
+        )}
+      </motion.div>
     </div>
   );
 };

@@ -38,6 +38,18 @@ export class ReservationService {
     try {
       const db = getFirestoreDB();
       
+      // Check user reservation limit (max 2 active reservations per user)
+      const userReservationsQuery = query(
+        collection(db, RESERVATIONS_COLLECTION),
+        where('userId', '==', userId),
+        where('status', 'in', ['pending', 'confirmed'])
+      );
+      
+      const userReservationsSnapshot = await getDocs(userReservationsQuery);
+      if (userReservationsSnapshot.size >= 2) {
+        throw new Error('Sie können maximal 2 aktive Reservierungen haben. Bitte stornieren Sie eine bestehende Reservierung oder warten Sie, bis eine abgeschlossen ist.');
+      }
+      
       // Get table details
       const tableDoc = await getDoc(doc(db, TABLES_COLLECTION, reservationData.tableId!));
       if (!tableDoc.exists()) {
@@ -56,9 +68,8 @@ export class ReservationService {
         throw new Error('Table is no longer available for the selected time');
       }
 
-      // Calculate pricing (base price + location multiplier)
-      const basePrice = 25; // Base reservation fee
-      const totalAmount = basePrice * table.priceMultiplier;
+      // No reservation fee - tables are free to reserve
+      const totalAmount = 0;
 
       const reservation: Omit<Reservation, 'id'> = {
         tableId: reservationData.tableId!,
@@ -209,6 +220,8 @@ export class ReservationService {
         updateData.cancelledAt = Timestamp.now() as unknown as Date;
       } else if (status === 'no_show') {
         updateData.noShowAt = Timestamp.now() as unknown as Date;
+      } else if (status === 'completed') {
+        updateData.completedAt = Timestamp.now() as unknown as Date;
       }
 
       await updateDoc(doc(db, RESERVATIONS_COLLECTION, reservationId), updateData);
@@ -228,7 +241,7 @@ export class ReservationService {
     }
   }
 
-  // Check table availability
+  // Check table availability with simplified query approach
   static async checkTableAvailability(
     tableId: string,
     date: Date,
@@ -237,22 +250,39 @@ export class ReservationService {
     try {
       const db = getFirestoreDB();
       
-      const startOfDay = new Date(date);
-      startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(date);
-      endOfDay.setHours(23, 59, 59, 999);
-
+      // Use a simpler query that doesn't require complex indexing
+      // Just get all reservations for this table and time slot, then filter by date in JS
       const q = query(
         collection(db, RESERVATIONS_COLLECTION),
         where('tableId', '==', tableId),
-        where('date', '>=', Timestamp.fromDate(startOfDay)),
-        where('date', '<=', Timestamp.fromDate(endOfDay)),
         where('timeSlot', '==', timeSlot),
         where('status', 'in', ['pending', 'confirmed', 'seated'])
       );
 
       const querySnapshot = await getDocs(q);
-      return querySnapshot.empty;
+      
+      // Filter by date in JavaScript to avoid complex Firestore range queries
+      const startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const conflictingReservations = querySnapshot.docs.filter(doc => {
+        const data = doc.data();
+        const reservationDate = data.date?.toDate() || new Date();
+        return reservationDate >= startOfDay && reservationDate <= endOfDay;
+      });
+
+      console.log(`✅ Table ${tableId} availability check:`, {
+        tableId,
+        timeSlot,
+        date: date.toDateString(),
+        totalReservations: querySnapshot.docs.length,
+        conflictingReservations: conflictingReservations.length,
+        isAvailable: conflictingReservations.length === 0
+      });
+
+      return conflictingReservations.length === 0;
     } catch (error) {
       console.error('Error checking table availability:', error);
       return false;
@@ -278,9 +308,27 @@ export class ReservationService {
       })) as Table[];
 
       // Filter by location if specified
-      const filteredTables = check.preferredLocation 
+      let filteredTables = check.preferredLocation 
         ? tables.filter(t => t.location === check.preferredLocation)
         : tables;
+
+      // Filter out outdoor tables for late time slots (Außenbereich closes at 22:00)
+      const timeSlotEndTime = check.timeSlot.split('-')[1]; // Get end time from "20:00-22:00"
+      const endHour = parseInt(timeSlotEndTime.split(':')[0]);
+      
+      filteredTables = filteredTables.filter(table => {
+        if (table.location === 'outdoor') {
+          // Outdoor area closes at 22:00
+          // Exclude if end time is after 22:00 and before 6:00 (next day)
+          if (endHour > 22 || endHour < 6) {
+            console.log(`Excluding outdoor table ${table.number} - Außenbereich closes at 22:00 (slot ends at ${timeSlotEndTime})`);
+            return false;
+          }
+        }
+        return true;
+      });
+
+      console.log(`Available tables after outdoor hours filter: ${filteredTables.length} (slot: ${check.timeSlot})`);
 
       // Check availability for each table
       const availableTables: AvailableTable[] = [];
@@ -292,8 +340,8 @@ export class ReservationService {
           check.timeSlot
         );
 
-        const basePrice = 25;
-        const price = basePrice * table.priceMultiplier;
+        // No reservation fee - tables are free to reserve
+        const price = 0;
 
         availableTables.push({
           table,
@@ -430,14 +478,51 @@ export class ReservationService {
       const batch = writeBatch(db);
 
       const sampleTables: Omit<Table, 'id'>[] = [
+        // INDOOR TABLES (20 tables - Tables 1-20)
+        // Small tables (2 people) - 8 tables
         { number: 1, capacity: 2, location: 'indoor', amenities: ['smoking_area'], isActive: true, priceMultiplier: 1.0 },
-        { number: 2, capacity: 4, location: 'indoor', amenities: ['smoking_area'], isActive: true, priceMultiplier: 1.0 },
-        { number: 3, capacity: 6, location: 'indoor', amenities: ['smoking_area', 'private'], isActive: true, priceMultiplier: 1.2 },
-        { number: 4, capacity: 2, location: 'outdoor', amenities: ['smoking_area', 'view'], isActive: true, priceMultiplier: 1.1 },
-        { number: 5, capacity: 4, location: 'outdoor', amenities: ['smoking_area', 'view'], isActive: true, priceMultiplier: 1.1 },
-        { number: 6, capacity: 8, location: 'vip', amenities: ['smoking_area', 'private', 'bar_access'], isActive: true, priceMultiplier: 1.5 },
-        { number: 7, capacity: 4, location: 'terrace', amenities: ['smoking_area', 'view'], isActive: true, priceMultiplier: 1.3 },
-        { number: 8, capacity: 6, location: 'terrace', amenities: ['smoking_area', 'view', 'private'], isActive: true, priceMultiplier: 1.4 },
+        { number: 2, capacity: 2, location: 'indoor', amenities: ['smoking_area'], isActive: true, priceMultiplier: 1.0 },
+        { number: 3, capacity: 2, location: 'indoor', amenities: ['smoking_area'], isActive: true, priceMultiplier: 1.0 },
+        { number: 4, capacity: 2, location: 'indoor', amenities: ['smoking_area'], isActive: true, priceMultiplier: 1.0 },
+        { number: 5, capacity: 2, location: 'indoor', amenities: ['smoking_area'], isActive: true, priceMultiplier: 1.0 },
+        { number: 6, capacity: 2, location: 'indoor', amenities: ['smoking_area'], isActive: true, priceMultiplier: 1.0 },
+        { number: 7, capacity: 2, location: 'indoor', amenities: ['smoking_area'], isActive: true, priceMultiplier: 1.0 },
+        { number: 8, capacity: 2, location: 'indoor', amenities: ['smoking_area'], isActive: true, priceMultiplier: 1.0 },
+        
+        // Medium tables (4 people) - 8 tables
+        { number: 9, capacity: 4, location: 'indoor', amenities: ['smoking_area'], isActive: true, priceMultiplier: 1.0 },
+        { number: 10, capacity: 4, location: 'indoor', amenities: ['smoking_area'], isActive: true, priceMultiplier: 1.0 },
+        { number: 11, capacity: 4, location: 'indoor', amenities: ['smoking_area'], isActive: true, priceMultiplier: 1.0 },
+        { number: 12, capacity: 4, location: 'indoor', amenities: ['smoking_area'], isActive: true, priceMultiplier: 1.0 },
+        { number: 13, capacity: 4, location: 'indoor', amenities: ['smoking_area'], isActive: true, priceMultiplier: 1.0 },
+        { number: 14, capacity: 4, location: 'indoor', amenities: ['smoking_area'], isActive: true, priceMultiplier: 1.0 },
+        { number: 15, capacity: 4, location: 'indoor', amenities: ['smoking_area'], isActive: true, priceMultiplier: 1.0 },
+        { number: 16, capacity: 4, location: 'indoor', amenities: ['smoking_area'], isActive: true, priceMultiplier: 1.0 },
+        
+        // Large tables (6 people) - 3 tables
+        { number: 17, capacity: 6, location: 'indoor', amenities: ['smoking_area', 'private'], isActive: true, priceMultiplier: 1.1 },
+        { number: 18, capacity: 6, location: 'indoor', amenities: ['smoking_area', 'private'], isActive: true, priceMultiplier: 1.1 },
+        { number: 19, capacity: 6, location: 'indoor', amenities: ['smoking_area', 'private'], isActive: true, priceMultiplier: 1.1 },
+        
+        // VIP table (8 people) - 1 table
+        { number: 20, capacity: 8, location: 'vip', amenities: ['smoking_area', 'private', 'bar_access'], isActive: true, priceMultiplier: 1.3 },
+
+        // AUßENBEREICH TABLES (10 tables - Tables 21-30) - Close at 22:00
+        // Small outdoor tables (2 people) - 4 tables
+        { number: 21, capacity: 2, location: 'outdoor', amenities: ['smoking_area', 'fresh_air'], isActive: true, priceMultiplier: 1.1 },
+        { number: 22, capacity: 2, location: 'outdoor', amenities: ['smoking_area', 'fresh_air'], isActive: true, priceMultiplier: 1.1 },
+        { number: 23, capacity: 2, location: 'outdoor', amenities: ['smoking_area', 'fresh_air'], isActive: true, priceMultiplier: 1.1 },
+        { number: 24, capacity: 2, location: 'outdoor', amenities: ['smoking_area', 'fresh_air'], isActive: true, priceMultiplier: 1.1 },
+        
+        // Medium outdoor tables (4 people) - 4 tables
+        { number: 25, capacity: 4, location: 'outdoor', amenities: ['smoking_area', 'fresh_air'], isActive: true, priceMultiplier: 1.1 },
+        { number: 26, capacity: 4, location: 'outdoor', amenities: ['smoking_area', 'fresh_air'], isActive: true, priceMultiplier: 1.1 },
+        { number: 27, capacity: 4, location: 'outdoor', amenities: ['smoking_area', 'fresh_air'], isActive: true, priceMultiplier: 1.1 },
+        { number: 28, capacity: 4, location: 'outdoor', amenities: ['smoking_area', 'fresh_air'], isActive: true, priceMultiplier: 1.1 },
+        
+        // Large outdoor tables (6 people) - 2 tables
+        { number: 29, capacity: 6, location: 'outdoor', amenities: ['smoking_area', 'fresh_air', 'view'], isActive: true, priceMultiplier: 1.2 },
+        { number: 30, capacity: 6, location: 'outdoor', amenities: ['smoking_area', 'fresh_air', 'view'], isActive: true, priceMultiplier: 1.2 },
       ];
 
       sampleTables.forEach((table) => {
@@ -460,10 +545,23 @@ export class ReservationService {
       const batch = writeBatch(db);
 
       const sampleTimeSlots: Omit<TimeSlot, 'id'>[] = [
-        { startTime: '17:00', endTime: '19:00', duration: 120, isActive: true, maxReservations: 20 },
-        { startTime: '19:00', endTime: '21:00', duration: 120, isActive: true, maxReservations: 20 },
+        // Afternoon/Early Evening - All areas open
+        { startTime: '16:00', endTime: '18:00', duration: 120, isActive: true, maxReservations: 30 },
+        { startTime: '17:00', endTime: '19:00', duration: 120, isActive: true, maxReservations: 30 },
+        { startTime: '18:00', endTime: '20:00', duration: 120, isActive: true, maxReservations: 30 },
+        { startTime: '19:00', endTime: '21:00', duration: 120, isActive: true, maxReservations: 30 },
+        
+        // Last slot for Außenbereich (ends at 22:00)
+        { startTime: '20:00', endTime: '22:00', duration: 120, isActive: true, maxReservations: 30 },
+        
+        // Late evening - Indoor only (Außenbereich closes at 22:00)
         { startTime: '21:00', endTime: '23:00', duration: 120, isActive: true, maxReservations: 20 },
-        { startTime: '23:00', endTime: '01:00', duration: 120, isActive: true, maxReservations: 15 },
+        { startTime: '22:00', endTime: '00:00', duration: 120, isActive: true, maxReservations: 20 },
+        { startTime: '23:00', endTime: '01:00', duration: 120, isActive: true, maxReservations: 20 },
+        
+        // Very late - Indoor only, reduced capacity
+        { startTime: '00:00', endTime: '02:00', duration: 120, isActive: true, maxReservations: 15 },
+        { startTime: '01:00', endTime: '03:00', duration: 120, isActive: true, maxReservations: 15 },
       ];
 
       sampleTimeSlots.forEach((slot) => {
@@ -503,13 +601,61 @@ export class ReservationService {
       const q = query(collection(db, TIME_SLOTS_COLLECTION), orderBy('startTime', 'asc'));
       const querySnapshot = await getDocs(q);
       
-      return querySnapshot.docs.map(doc => ({
+      const timeSlots = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as TimeSlot[];
+
+      // Remove duplicates based on startTime-endTime combination
+      const uniqueTimeSlots = timeSlots.filter((slot, index, self) => 
+        index === self.findIndex(s => s.startTime === slot.startTime && s.endTime === slot.endTime)
+      );
+
+      console.log(`Loaded ${timeSlots.length} time slots, ${uniqueTimeSlots.length} unique`);
+      return uniqueTimeSlots;
     } catch (error) {
       console.error('Error getting time slots:', error);
       throw error;
+    }
+  }
+
+  // Get user's active reservation for today
+  static async getUserActiveReservation(userId: string): Promise<Reservation | null> {
+    try {
+      const db = getFirestoreDB();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const q = query(
+        collection(db, RESERVATIONS_COLLECTION),
+        where('userId', '==', userId),
+        where('date', '>=', Timestamp.fromDate(today)),
+        where('date', '<', Timestamp.fromDate(tomorrow)),
+        where('status', 'in', ['confirmed', 'seated']),
+        orderBy('date', 'desc')
+      );
+
+      const querySnapshot = await getDocs(q);
+      
+      if (querySnapshot.empty) {
+        return null;
+      }
+
+      // Return the most recent active reservation
+      const doc = querySnapshot.docs[0];
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        date: data.date.toDate(),
+        createdAt: data.createdAt?.toDate() || new Date(),
+        updatedAt: data.updatedAt?.toDate() || new Date(),
+      } as Reservation;
+    } catch (error) {
+      console.error('Error getting user active reservation:', error);
+      return null;
     }
   }
 } 

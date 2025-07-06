@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -12,10 +12,16 @@ import {
   Crown,
 } from "lucide-react";
 import { useCart } from "../../contexts/CartContext";
-import { OrderService } from "../../services/orderService";
+// import { OrderService } from "../../services/orderService"; // May be needed for fallback
+import {
+  ReservationOrderIntegrationService,
+  ReservationOrderLink,
+} from "../../services/reservationOrderIntegrationService";
+import { ReservationService } from "../../services/reservationService";
 import { Order, LoyaltyDiscount } from "../../types/order";
 import LoyaltyOrderIntegration from "../loyalty/LoyaltyOrderIntegration";
 import toast from "react-hot-toast";
+import { useAuthStore } from "../../stores/authStore";
 
 interface CartProps {
   isOpen: boolean;
@@ -33,11 +39,61 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
     setSpecialInstructions,
     getTotalAmount,
   } = useCart();
+  const { user } = useAuthStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [loyaltyDiscount, setLoyaltyDiscount] =
     useState<LoyaltyDiscount | null>(null);
   const [discountAmount, setDiscountAmount] = useState(0);
+  const [reservationContext, setReservationContext] =
+    useState<ReservationOrderLink | null>(null);
+  const [isLoadingReservation, setIsLoadingReservation] = useState(false);
+  const [autoReservationChecked, setAutoReservationChecked] = useState(false);
+
+  // Auto-detect user's active reservation when cart opens
+  useEffect(() => {
+    const checkUserReservation = async () => {
+      if (!user || !isOpen || autoReservationChecked) return;
+
+      setIsLoadingReservation(true);
+      setAutoReservationChecked(true);
+
+      try {
+        const activeReservation =
+          await ReservationService.getUserActiveReservation(user.id);
+
+        if (activeReservation) {
+          // Auto-populate reservation context with proper null checks
+          const reservationLink: ReservationOrderLink = {
+            reservation: activeReservation,
+            customerInfo: {
+              name: activeReservation.customerName || "",
+              email: activeReservation.customerEmail || "",
+              phone: activeReservation.customerPhone || "",
+            },
+            preOrderItems: activeReservation.preOrderItems || [],
+          };
+
+          setReservationContext(reservationLink);
+          setTableNumber(activeReservation.tableNumber);
+          setCustomerInfo(
+            activeReservation.customerName,
+            activeReservation.customerPhone
+          );
+
+          toast.success(
+            `Automatisch verbunden mit Ihrer Reservierung für Tisch ${activeReservation.tableNumber}!`
+          );
+        }
+      } catch (error) {
+        console.error("Error checking user reservation:", error);
+      } finally {
+        setIsLoadingReservation(false);
+      }
+    };
+
+    checkUserReservation();
+  }, [user, isOpen, autoReservationChecked, setTableNumber, setCustomerInfo]);
 
   const handleQuantityChange = (id: string, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -70,6 +126,51 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
     return Math.max(0, getTotalAmount() - discountAmount);
   };
 
+  // Check for active reservation when table number changes
+  const checkForReservation = async (tableNumber: number) => {
+    if (!tableNumber || tableNumber <= 0) {
+      setReservationContext(null);
+      return;
+    }
+
+    setIsLoadingReservation(true);
+    try {
+      const context =
+        await ReservationOrderIntegrationService.getTableContextForOrdering(
+          tableNumber
+        );
+
+      if (context.hasActiveReservation && context.reservationInfo) {
+        setReservationContext(context.reservationInfo);
+
+        // Auto-populate customer information from reservation
+        if (context.suggestedCustomerInfo) {
+          setCustomerInfo(
+            context.suggestedCustomerInfo.name,
+            context.suggestedCustomerInfo.phone
+          );
+        }
+
+        toast.success(
+          `Reservierung gefunden für ${context.suggestedCustomerInfo?.name}! Kundendaten wurden automatisch ausgefüllt.`
+        );
+      } else {
+        setReservationContext(null);
+      }
+    } catch (error) {
+      console.error("Error checking for reservation:", error);
+      setReservationContext(null);
+    } finally {
+      setIsLoadingReservation(false);
+    }
+  };
+
+  // Enhanced table number handler
+  const handleTableNumberChange = (tableNumber: number) => {
+    setTableNumber(tableNumber);
+    checkForReservation(tableNumber);
+  };
+
   const handleSubmitOrder = async () => {
     if (!state.tableNumber) {
       toast.error("Bitte geben Sie eine Tischnummer ein");
@@ -84,29 +185,56 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
     setIsSubmitting(true);
 
     try {
+      // Build order data with careful null/undefined checks
       const orderData: Omit<Order, "id" | "createdAt" | "updatedAt"> = {
         tableNumber: state.tableNumber,
         items: state.items,
         totalAmount: getFinalTotal(),
         status: "pending",
-        ...(state.customerName &&
-          state.customerName.trim() && {
-            customerName: state.customerName.trim(),
-          }),
-        ...(state.customerPhone &&
-          state.customerPhone.trim() && {
-            customerPhone: state.customerPhone.trim(),
-          }),
-        ...(state.specialInstructions &&
-          state.specialInstructions.trim() && {
-            specialInstructions: state.specialInstructions.trim(),
-          }),
-        ...(loyaltyDiscount && { loyaltyDiscount }),
+        orderType: reservationContext ? "reservation" : "walk-in",
+        payment: {
+          status: "unpaid" as const,
+          amount: getFinalTotal(),
+        },
       };
 
-      await OrderService.createOrder(orderData);
+      // Add optional fields only if they have valid values
+      if (state.customerName && state.customerName.trim()) {
+        orderData.customerName = state.customerName.trim();
+      }
 
-      toast.success("Bestellung erfolgreich aufgegeben!");
+      if (state.customerPhone && state.customerPhone.trim()) {
+        orderData.customerPhone = state.customerPhone.trim();
+      }
+
+      // For reservation orders, try to get email from reservation context
+      if (
+        reservationContext &&
+        reservationContext.customerInfo.email &&
+        reservationContext.customerInfo.email.trim()
+      ) {
+        orderData.customerEmail = reservationContext.customerInfo.email.trim();
+      }
+
+      if (state.specialInstructions && state.specialInstructions.trim()) {
+        orderData.specialInstructions = state.specialInstructions.trim();
+      }
+
+      if (loyaltyDiscount) {
+        orderData.loyaltyDiscount = loyaltyDiscount;
+      }
+
+      // Use integration service for reservation-linked orders
+      await ReservationOrderIntegrationService.createOrderWithReservation(
+        orderData,
+        reservationContext?.reservation.id
+      );
+
+      const successMessage = reservationContext
+        ? `Bestellung erfolgreich für Reservierung von ${reservationContext.customerInfo.name} aufgegeben!`
+        : "Bestellung erfolgreich aufgegeben!";
+
+      toast.success(successMessage);
       clearCart();
       setShowCheckout(false);
       setLoyaltyDiscount(null);
@@ -171,9 +299,28 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
               {state.items.length === 0 ? (
                 <div className="text-center py-8">
                   <ShoppingCart className="w-16 h-16 mx-auto text-gray-500 mb-4" />
-                  <p className="text-gray-700 font-medium">
+                  <p className="text-gray-700 font-medium mb-2">
                     Ihr Warenkorb ist leer
                   </p>
+                  {reservationContext && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="bg-royal-purple/10 border border-royal-purple/20 rounded-royal p-3 mt-4"
+                    >
+                      <div className="flex items-center justify-center space-x-2 text-royal-purple">
+                        <Crown className="w-4 h-4" />
+                        <span className="text-sm font-medium">
+                          Bereit für Tisch{" "}
+                          {reservationContext.reservation.tableNumber}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-600 mt-1">
+                        Fügen Sie Artikel aus dem Menü hinzu, um Ihre Bestellung
+                        zu starten
+                      </p>
+                    </motion.div>
+                  )}
                 </div>
               ) : (
                 <>
@@ -287,79 +434,160 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
                       animate={{ opacity: 1, height: "auto" }}
                       className="space-y-4 border-t border-royal-gold/20 pt-4"
                     >
-                      <h3 className="font-semibold text-gray-900">
-                        Bestelldetails
-                      </h3>
+                      {reservationContext ? (
+                        /* Streamlined form for reservation customers */
+                        <div className="space-y-4">
+                          <h3 className="font-semibold text-gray-900">
+                            Bestellung für Ihre Reservierung
+                          </h3>
 
-                      {/* Table Number */}
-                      <div className="space-y-2">
-                        <label className="flex items-center space-x-2 text-sm font-medium text-gray-800">
-                          <Hash className="w-4 h-4" />
-                          <span>Tischnummer *</span>
-                        </label>
-                        <input
-                          type="number"
-                          min="1"
-                          max="50"
-                          value={state.tableNumber || ""}
-                          onChange={(e) =>
-                            setTableNumber(parseInt(e.target.value) || 0)
-                          }
-                          className="w-full p-3 border border-gray-300 rounded-royal bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-royal-purple focus:border-royal-purple transition-colors"
-                          placeholder="z.B. 5"
-                          required
-                        />
-                      </div>
+                          {/* Reservation Info Summary */}
+                          <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="bg-royal-purple/10 border border-royal-purple/20 rounded-royal p-4"
+                          >
+                            <div className="flex items-start space-x-3">
+                              <Crown className="w-5 h-5 text-royal-purple mt-0.5 flex-shrink-0" />
+                              <div className="flex-1">
+                                <h4 className="text-base font-semibold text-royal-purple">
+                                  {reservationContext.customerInfo.name}
+                                </h4>
+                                <div className="grid grid-cols-2 gap-2 mt-2 text-sm text-gray-600">
+                                  <div>
+                                    📅{" "}
+                                    {new Date(
+                                      reservationContext.reservation.date
+                                    ).toLocaleDateString("de-DE")}
+                                  </div>
+                                  <div>
+                                    🕐{" "}
+                                    {reservationContext.reservation.startTime} -{" "}
+                                    {reservationContext.reservation.endTime}
+                                  </div>
+                                  <div>
+                                    👥{" "}
+                                    {reservationContext.reservation.partySize}{" "}
+                                    Personen
+                                  </div>
+                                  <div>
+                                    🪑 Tisch{" "}
+                                    {reservationContext.reservation.tableNumber}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </motion.div>
 
-                      {/* Customer Name */}
-                      <div className="space-y-2">
-                        <label className="flex items-center space-x-2 text-sm font-medium text-gray-800">
-                          <User className="w-4 h-4" />
-                          <span>Name (optional)</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={state.customerName}
-                          onChange={(e) =>
-                            setCustomerInfo(e.target.value, state.customerPhone)
-                          }
-                          className="w-full p-3 border border-gray-300 rounded-royal bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-royal-purple focus:border-royal-purple transition-colors"
-                          placeholder="Ihr Name"
-                        />
-                      </div>
+                          {/* Special Instructions Only */}
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-800">
+                              Besondere Wünsche (optional)
+                            </label>
+                            <textarea
+                              value={state.specialInstructions}
+                              onChange={(e) =>
+                                setSpecialInstructions(e.target.value)
+                              }
+                              className="w-full p-3 border border-gray-300 rounded-royal bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-royal-purple focus:border-royal-purple transition-colors resize-none"
+                              rows={3}
+                              placeholder="Zusätzliche Anweisungen für Ihre Bestellung..."
+                            />
+                            <p className="text-xs text-gray-500">
+                              z.B. "Extra scharf", "Ohne Zwiebeln", "Getränke
+                              zuerst servieren"
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        /* Full form for walk-in customers */
+                        <div className="space-y-4">
+                          <h3 className="font-semibold text-gray-900">
+                            Bestelldetails
+                          </h3>
 
-                      {/* Customer Phone */}
-                      <div className="space-y-2">
-                        <label className="flex items-center space-x-2 text-sm font-medium text-gray-800">
-                          <Phone className="w-4 h-4" />
-                          <span>Telefon (optional)</span>
-                        </label>
-                        <input
-                          type="tel"
-                          value={state.customerPhone}
-                          onChange={(e) =>
-                            setCustomerInfo(state.customerName, e.target.value)
-                          }
-                          className="w-full p-3 border border-gray-300 rounded-royal bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-royal-purple focus:border-royal-purple transition-colors"
-                          placeholder="+49 15781413767"
-                        />
-                      </div>
+                          {/* Table Number */}
+                          <div className="space-y-2">
+                            <label className="flex items-center space-x-2 text-sm font-medium text-gray-800">
+                              <Hash className="w-4 h-4" />
+                              <span>Tischnummer *</span>
+                              {isLoadingReservation && (
+                                <div className="w-4 h-4 border-2 border-royal-gold border-t-transparent rounded-full animate-spin"></div>
+                              )}
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="50"
+                              value={state.tableNumber || ""}
+                              onChange={(e) =>
+                                handleTableNumberChange(
+                                  parseInt(e.target.value) || 0
+                                )
+                              }
+                              className="w-full p-3 border border-gray-300 rounded-royal bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-royal-purple focus:border-royal-purple transition-colors"
+                              placeholder="z.B. 5"
+                              required
+                            />
+                          </div>
 
-                      {/* Special Instructions */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-800">
-                          Spezielle Anweisungen (optional)
-                        </label>
-                        <textarea
-                          value={state.specialInstructions}
-                          onChange={(e) =>
-                            setSpecialInstructions(e.target.value)
-                          }
-                          className="w-full p-3 border border-gray-300 rounded-royal bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-royal-purple focus:border-royal-purple transition-colors resize-none"
-                          rows={3}
-                          placeholder="Zusätzliche Anweisungen für Ihre Bestellung..."
-                        />
-                      </div>
+                          {/* Customer Name */}
+                          <div className="space-y-2">
+                            <label className="flex items-center space-x-2 text-sm font-medium text-gray-800">
+                              <User className="w-4 h-4" />
+                              <span>Name (optional)</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={state.customerName}
+                              onChange={(e) =>
+                                setCustomerInfo(
+                                  e.target.value,
+                                  state.customerPhone
+                                )
+                              }
+                              className="w-full p-3 border border-gray-300 rounded-royal bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-royal-purple focus:border-royal-purple transition-colors"
+                              placeholder="Ihr Name"
+                            />
+                          </div>
+
+                          {/* Customer Phone */}
+                          <div className="space-y-2">
+                            <label className="flex items-center space-x-2 text-sm font-medium text-gray-800">
+                              <Phone className="w-4 h-4" />
+                              <span>Telefon (optional)</span>
+                            </label>
+                            <input
+                              type="tel"
+                              value={state.customerPhone}
+                              onChange={(e) =>
+                                setCustomerInfo(
+                                  state.customerName,
+                                  e.target.value
+                                )
+                              }
+                              className="w-full p-3 border border-gray-300 rounded-royal bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-royal-purple focus:border-royal-purple transition-colors"
+                              placeholder="+49 15781413767"
+                            />
+                          </div>
+
+                          {/* Special Instructions */}
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-800">
+                              Spezielle Anweisungen (optional)
+                            </label>
+                            <textarea
+                              value={state.specialInstructions}
+                              onChange={(e) =>
+                                setSpecialInstructions(e.target.value)
+                              }
+                              className="w-full p-3 border border-gray-300 rounded-royal bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-royal-purple focus:border-royal-purple transition-colors resize-none"
+                              rows={3}
+                              placeholder="Zusätzliche Anweisungen für Ihre Bestellung..."
+                            />
+                          </div>
+                        </div>
+                      )}
                     </motion.div>
                   ) : (
                     <div className="flex space-x-3">
@@ -367,10 +595,14 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
                         onClick={() => setShowCheckout(true)}
                         className="flex-1 bg-royal-gradient-gold text-royal-charcoal font-royal font-bold py-3 px-6 rounded-royal royal-glow hover:shadow-lg transition-all duration-300"
                       >
-                        Zur Kasse
+                        {reservationContext ? "Bestellen" : "Bestellen"}
                       </button>
                       <button
-                        onClick={clearCart}
+                        onClick={() => {
+                          clearCart();
+                          setReservationContext(null);
+                          setAutoReservationChecked(false);
+                        }}
                         className="px-4 py-3 border border-red-500 text-red-500 hover:bg-red-500 hover:text-white rounded-royal transition-all duration-300"
                       >
                         <Trash2 className="w-5 h-5" />

@@ -110,6 +110,12 @@ export class AuthService {
     }
   }
 
+  // Get current user from Firebase Auth
+  static getCurrentUser(): FirebaseUser | null {
+    const auth = getFirebaseAuth();
+    return auth.currentUser;
+  }
+
   // Reset password
   static async resetPassword(email: string): Promise<void> {
     try {

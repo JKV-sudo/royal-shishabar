@@ -1,7 +1,7 @@
 import {
   GoogleAuthProvider,
   signInWithPopup,
-  User as FirebaseUser,
+
 } from 'firebase/auth';
 import {
   doc,

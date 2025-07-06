@@ -1,0 +1,29 @@
+# Snyk (https://snyk.io) policy file
+version: v1.25.0
+
+# Define how to handle specific vulnerabilities
+ignore: {}
+
+# Language-specific settings
+language-settings:
+  javascript:
+    # Don't fail on dev dependencies with low/medium vulnerabilities
+    dev-dependencies:
+      fail-on-severity: high
+    # Fail on production dependencies with medium+ vulnerabilities  
+    dependencies:
+      fail-on-severity: medium
+
+# Patches to apply automatically
+patches: {}
+
+# Exclude paths from security scanning
+exclude:
+  global:
+    - node_modules
+    - dist
+    - build
+    - .git
+    - .github
+    - public/videos
+    - scripts 

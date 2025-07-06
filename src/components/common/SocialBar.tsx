@@ -8,20 +8,20 @@ const SocialBar = () => {
   const socialLinks = [
     {
       icon: Instagram,
-      href: "https://instagram.com/your_instagram_handle", // TODO: Replace with actual Instagram handle
+      href: "https://www.instagram.com/royal.waldkraiburg/",
       label: "Instagram",
       color: "from-purple-500 via-pink-500 to-orange-500",
     },
     {
       icon: Mail,
       href: "mailto:Royal.Waldkraiburg@gmail.com",
-      label: "Email",
+      label: "E-Mail",
       color: "bg-royal-gold",
     },
     {
       icon: Phone,
       href: "tel:+4915781413767",
-      label: "Phone",
+      label: "Telefon",
       color: "bg-green-600",
     },
   ];

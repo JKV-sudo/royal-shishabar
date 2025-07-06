@@ -6,6 +6,7 @@ import { useAuthStore } from "../stores/authStore";
 import { ReservationService } from "../services/reservationService";
 import { Reservation } from "../types/reservation";
 import ReservationForm from "../components/reservations/ReservationForm";
+import ReservationBillView from "../components/reservations/ReservationBillView";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -153,6 +154,17 @@ const Reservations: React.FC = () => {
         </div>
       )}
 
+      {/* Show bill view for confirmed, seated, or completed reservations */}
+      {(reservation.status === "confirmed" ||
+        reservation.status === "seated" ||
+        reservation.status === "completed") && (
+        <ReservationBillView
+          reservationId={reservation.id!}
+          customerName={reservation.customerName}
+          tableNumber={reservation.tableNumber}
+        />
+      )}
+
       <div className="flex items-center justify-between">
         <div className="text-royal-cream/60 text-xs">
           Reservation #{reservation.id?.slice(-8)}
@@ -266,6 +278,18 @@ const Reservations: React.FC = () => {
                   </span>
                 </div>
               </div>
+            )}
+
+            {/* Bill view for active reservations */}
+            {(selectedReservation.status === "confirmed" ||
+              selectedReservation.status === "seated" ||
+              selectedReservation.status === "completed") && (
+              <ReservationBillView
+                reservationId={selectedReservation.id!}
+                customerName={selectedReservation.customerName}
+                tableNumber={selectedReservation.tableNumber}
+                className="border-t border-royal-gold/30 mt-4"
+              />
             )}
 
             <div className="text-center text-royal-cream/60 text-xs pt-4 border-t border-royal-gold/30">

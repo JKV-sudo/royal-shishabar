@@ -62,12 +62,21 @@ const OrderManagement: React.FC = () => {
 
   const loadOrders = async () => {
     try {
+      console.log("🔄 Loading orders with filters:", filters);
       setLoading(true);
       const ordersData = await OrderService.getOrdersWithFilters(filters);
+      console.log(
+        "✅ Orders loaded successfully:",
+        ordersData.length,
+        "orders"
+      );
       setOrders(ordersData);
     } catch (error) {
-      console.error("Error loading orders:", error);
-      toast.error("Fehler beim Laden der Bestellungen");
+      console.error("❌ Error loading orders:", error);
+      toast.error(
+        "Fehler beim Laden der Bestellungen: " +
+          (error instanceof Error ? error.message : String(error))
+      );
     } finally {
       setLoading(false);
     }

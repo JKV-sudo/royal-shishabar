@@ -11,6 +11,12 @@ import OrderManagement from "../components/admin/OrderManagement";
 import PopupManagement from "../components/admin/PopupManagement";
 import ReservationManagement from "../components/admin/ReservationManagement";
 import LoyaltyManagement from "../components/admin/LoyaltyManagement";
+import { TableManagement } from "../components/admin/TableManagement";
+import LiveTableGrid from "../components/admin/LiveTableGrid";
+import { IntegrationDashboard } from "../components/admin/IntegrationDashboard";
+import BarOperations from "../components/admin/BarOperations";
+import AdminGDPRDashboard from "../components/gdpr/AdminGDPRDashboard";
+import OrderReports from "../components/admin/OrderReports";
 import { motion } from "framer-motion";
 import {
   Users,
@@ -32,6 +38,12 @@ import {
   Package,
   MessageSquare,
   CalendarCheck,
+  Grid,
+  Monitor,
+  Link,
+  ChefHat,
+  Shield,
+  FileText,
 } from "lucide-react";
 
 const Admin: React.FC = () => {
@@ -60,23 +72,6 @@ const Admin: React.FC = () => {
     totalAttendees: 0,
     eventEngagement: 0,
   });
-
-  // Check if user is admin
-  if (!user || user.role !== "admin") {
-    return (
-      <div className="min-h-screen bg-royal-charcoal-dark flex items-center justify-center">
-        <div className="text-center">
-          <Crown className="w-16 h-16 text-royal-gold mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-royal-cream mb-2">
-            Access Denied
-          </h1>
-          <p className="text-royal-cream-light">
-            You need admin privileges to access this page.
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   const loadEvents = async () => {
     try {
@@ -110,18 +105,21 @@ const Admin: React.FC = () => {
   };
 
   useEffect(() => {
-    loadEvents();
-    loadAnalytics();
+    // Only load data if user is admin
+    if (user && user.role === "admin") {
+      loadEvents();
+      loadAnalytics();
 
-    // Set up real-time analytics listener
-    const unsubscribe = AnalyticsService.onAnalyticsChange((data) => {
-      setAnalyticsData(data);
-    });
+      // Set up real-time analytics listener
+      const unsubscribe = AnalyticsService.onAnalyticsChange((data) => {
+        setAnalyticsData(data);
+      });
 
-    return () => {
-      unsubscribe();
-    };
-  }, []);
+      return () => {
+        unsubscribe();
+      };
+    }
+  }, [user]);
 
   const handleDeleteEvent = async (eventId: string) => {
     if (window.confirm("Are you sure you want to delete this event?")) {
@@ -130,6 +128,7 @@ const Admin: React.FC = () => {
         toast.success("Event deleted successfully");
         loadEvents();
       } catch (error) {
+        console.error("Error deleting event:", error);
         toast.error("Failed to delete event");
       }
     }
@@ -146,21 +145,45 @@ const Admin: React.FC = () => {
       );
       loadEvents();
     } catch (error) {
+      console.error("Error toggling event status:", error);
       toast.error("Failed to update event status");
     }
   };
 
+  // Check if user is admin
+  if (!user || user.role !== "admin") {
+    return (
+      <div className="min-h-screen bg-royal-charcoal-dark flex items-center justify-center">
+        <div className="text-center">
+          <Crown className="w-16 h-16 text-royal-gold mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-royal-cream mb-2">
+            Access Denied
+          </h1>
+          <p className="text-royal-cream-light">
+            You need admin privileges to access this page.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const tabs = [
     { id: "dashboard", name: "Dashboard", icon: BarChart3 },
     { id: "reservations", name: "Reservations", icon: CalendarCheck },
+    { id: "tables", name: "Tables", icon: Grid },
+    { id: "live-status", name: "Live Status", icon: Monitor },
+    { id: "integration", name: "Integration", icon: Link },
     { id: "events", name: "Events", icon: Calendar },
     { id: "users", name: "Users", icon: Users },
     { id: "loyalty", name: "Stempelpass", icon: Crown },
     { id: "analytics", name: "Analytics", icon: TrendingUp },
+    { id: "gdpr", name: "GDPR", icon: Shield },
     { id: "settings", name: "Settings", icon: Settings },
     { id: "menu", name: "Menu", icon: Utensils },
     { id: "special-offers", name: "Sonderangebote", icon: Tag },
     { id: "orders", name: "Orders", icon: Package },
+    { id: "reports", name: "Berichte", icon: FileText },
+    { id: "bar-operations", name: "Bar Operations", icon: ChefHat },
     { id: "popup", name: "Popups", icon: MessageSquare },
   ];
 
@@ -666,6 +689,12 @@ const Admin: React.FC = () => {
         return renderDashboard();
       case "reservations":
         return <ReservationManagement />;
+      case "tables":
+        return <TableManagement />;
+      case "live-status":
+        return <LiveTableGrid />;
+      case "integration":
+        return <IntegrationDashboard />;
       case "events":
         return renderEvents();
       case "users":
@@ -674,6 +703,8 @@ const Admin: React.FC = () => {
         return <LoyaltyManagement />;
       case "analytics":
         return renderAnalytics();
+      case "gdpr":
+        return <AdminGDPRDashboard />;
       case "settings":
         return renderSettings();
       case "menu":
@@ -682,6 +713,10 @@ const Admin: React.FC = () => {
         return <SpecialOfferManagement />;
       case "orders":
         return <OrderManagement />;
+      case "reports":
+        return <OrderReports />;
+      case "bar-operations":
+        return <BarOperations />;
       case "popup":
         return <PopupManagement />;
       default:

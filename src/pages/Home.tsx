@@ -170,31 +170,31 @@ const Home = () => {
         {/* Video Overlay with Enhanced Gradient */}
         <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/40 to-royal-purple-dark/50 z-10"></div>
 
-        {/* Video Controls - Hidden on mobile to save space */}
-        <div className="absolute top-1/2 left-4 transform -translate-y-1/2 z-30 hidden md:block">
+        {/* Video Controls - Responsive */}
+        <div className="absolute top-1/2 left-2 md:left-4 transform -translate-y-1/2 z-30">
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={previousVideo}
-            className="bg-royal-gold/20 backdrop-blur-sm text-white p-3 rounded-full border border-royal-gold/30 hover:bg-royal-gold/30 transition-all duration-300 royal-glow"
+            className="bg-royal-gold/20 backdrop-blur-sm text-white p-2 md:p-3 rounded-full border border-royal-gold/30 hover:bg-royal-gold/30 transition-all duration-300 royal-glow"
           >
-            <ChevronLeft className="w-6 h-6" />
+            <ChevronLeft className="w-4 h-4 md:w-6 md:h-6" />
           </motion.button>
         </div>
 
-        <div className="absolute top-1/2 right-4 transform -translate-y-1/2 z-30 hidden md:block">
+        <div className="absolute top-1/2 right-2 md:right-4 transform -translate-y-1/2 z-30">
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={nextVideo}
-            className="bg-royal-gold/20 backdrop-blur-sm text-white p-3 rounded-full border border-royal-gold/30 hover:bg-royal-gold/30 transition-all duration-300 royal-glow"
+            className="bg-royal-gold/20 backdrop-blur-sm text-white p-2 md:p-3 rounded-full border border-royal-gold/30 hover:bg-royal-gold/30 transition-all duration-300 royal-glow"
           >
-            <ChevronRight className="w-6 h-6" />
+            <ChevronRight className="w-4 h-4 md:w-6 md:h-6" />
           </motion.button>
         </div>
 
-        {/* Play/Pause Control - Smaller on mobile */}
-        <div className="absolute top-16 md:top-24 right-4 z-30">
+        {/* Play/Pause Control - Mobile optimized */}
+        <div className="absolute top-20 md:top-24 right-2 md:right-4 z-30">
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}

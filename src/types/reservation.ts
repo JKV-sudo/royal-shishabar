@@ -2,8 +2,8 @@ export interface Table {
   id: string;
   number: number;
   capacity: number;
-  location: 'indoor' | 'outdoor' | 'vip' | 'terrace';
-  amenities: string[]; // ['smoking_area', 'private', 'view', 'bar_access']
+  location: 'indoor' | 'outdoor' | 'vip';
+  amenities: string[]; // ['smoking_area', 'private', 'view', 'bar_access', 'fresh_air']
   isActive: boolean;
   priceMultiplier: number; // 1.0 for regular, 1.5 for VIP, etc.
 }
@@ -40,6 +40,7 @@ export interface Reservation {
   confirmedAt?: Date;
   cancelledAt?: Date;
   noShowAt?: Date;
+  completedAt?: Date;
   reminderSent?: boolean;
   notes?: string; // Admin notes
 }

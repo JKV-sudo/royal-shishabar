@@ -20,6 +20,7 @@ import {
   AvailabilityCheck,
 } from "../../types/reservation";
 import LoadingSpinner from "../common/LoadingSpinner";
+import DataProcessingConsent from "../gdpr/DataProcessingConsent";
 
 interface ReservationFormProps {
   onReservationComplete?: (reservationId: string) => void;
@@ -38,6 +39,8 @@ const ReservationForm: React.FC<ReservationFormProps> = ({
   const [selectedTable, setSelectedTable] = useState<AvailableTable | null>(
     null
   );
+  const [hasDataProcessingConsent, setHasDataProcessingConsent] =
+    useState(false);
 
   const [formData, setFormData] = useState<ReservationFormData>({
     date: "",
@@ -92,6 +95,12 @@ const ReservationForm: React.FC<ReservationFormProps> = ({
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (formData.customerEmail && !emailRegex.test(formData.customerEmail)) {
         newErrors.customerEmail = "Please enter a valid email address";
+      }
+
+      // GDPR consent validation
+      if (!hasDataProcessingConsent) {
+        newErrors.consent =
+          "Data processing consent is required to create a reservation";
       }
     }
 
@@ -152,8 +161,9 @@ const ReservationForm: React.FC<ReservationFormProps> = ({
     switch (location) {
       case "vip":
         return <Crown className="w-4 h-4" />;
-      case "terrace":
+      case "outdoor":
         return <Star className="w-4 h-4" />;
+      case "indoor":
       default:
         return <MapPin className="w-4 h-4" />;
     }
@@ -163,13 +173,34 @@ const ReservationForm: React.FC<ReservationFormProps> = ({
     switch (location) {
       case "vip":
         return "text-royal-gold";
-      case "terrace":
-        return "text-purple-400";
       case "outdoor":
         return "text-green-400";
+      case "indoor":
       default:
         return "text-royal-cream";
     }
+  };
+
+  const getLocationDisplayName = (location: string) => {
+    switch (location) {
+      case "vip":
+        return "VIP Bereich";
+      case "outdoor":
+        return "Außenbereich";
+      case "indoor":
+      default:
+        return "Innenbereich";
+    }
+  };
+
+  const isLocationOpenForTimeSlot = (location: string, timeSlot: string) => {
+    if (location === "outdoor") {
+      const endTime = timeSlot.split("-")[1];
+      const endHour = parseInt(endTime.split(":")[0]);
+      // Outdoor closes at 22:00
+      return !(endHour > 22 || endHour < 6);
+    }
+    return true;
   };
 
   const formatTimeSlot = (timeSlot: string) => {
@@ -200,6 +231,12 @@ const ReservationForm: React.FC<ReservationFormProps> = ({
         <p className="text-royal-cream/70">
           Choose your preferred date, time, and party size
         </p>
+        <div className="mt-3 p-3 bg-blue-900/30 border border-blue-500/50 rounded-royal">
+          <p className="text-blue-200 text-sm">
+            ℹ️ Reservierungen sind kostenlos. Maximal 2 aktive Reservierungen
+            pro Konto.
+          </p>
+        </div>
       </div>
 
       {/* Date Selection */}
@@ -324,6 +361,20 @@ const ReservationForm: React.FC<ReservationFormProps> = ({
         </p>
       </div>
 
+      {/* Outdoor area closing notice */}
+      {!isLocationOpenForTimeSlot("outdoor", formData.timeSlot) && (
+        <div className="bg-amber-900/30 border border-amber-500/50 rounded-royal p-4 mb-4">
+          <div className="flex items-center space-x-2 text-amber-300">
+            <AlertCircle className="w-5 h-5" />
+            <span className="font-medium">Hinweis:</span>
+          </div>
+          <p className="text-amber-200 text-sm mt-1">
+            Der Außenbereich schließt um 22:00 Uhr. Für diese Uhrzeit sind nur
+            Tische im Innenbereich verfügbar.
+          </p>
+        </div>
+      )}
+
       {availableTables.length === 0 ? (
         <div className="text-center py-8">
           <AlertCircle className="w-12 h-12 text-royal-cream/50 mx-auto mb-4" />
@@ -364,11 +415,11 @@ const ReservationForm: React.FC<ReservationFormProps> = ({
                   </span>
                 </div>
                 <div className="text-right">
-                  <div className="text-royal-gold font-bold">
-                    €{availableTable.price.toFixed(2)}
+                  <div className="text-green-400 font-bold text-sm">
+                    KOSTENLOS
                   </div>
                   <div className="text-xs text-royal-cream/70">
-                    reservation fee
+                    keine Reservierungsgebühr
                   </div>
                 </div>
               </div>
@@ -387,7 +438,7 @@ const ReservationForm: React.FC<ReservationFormProps> = ({
                       availableTable.table.location
                     )}`}
                   >
-                    {availableTable.table.location}
+                    {getLocationDisplayName(availableTable.table.location)}
                   </span>
                 </div>
                 {availableTable.table.amenities.length > 0 && (
@@ -473,10 +524,8 @@ const ReservationForm: React.FC<ReservationFormProps> = ({
               </span>
             </div>
             <div className="flex justify-between font-semibold border-t border-royal-gold/30 pt-2">
-              <span className="text-royal-cream">Reservation Fee:</span>
-              <span className="text-royal-gold">
-                €{selectedTable.price.toFixed(2)}
-              </span>
+              <span className="text-royal-cream">Reservierung:</span>
+              <span className="text-green-400">KOSTENLOS</span>
             </div>
           </div>
         </div>
@@ -567,6 +616,23 @@ const ReservationForm: React.FC<ReservationFormProps> = ({
         </div>
       </div>
 
+      {/* GDPR Data Processing Consent */}
+      <div className="space-y-4">
+        <DataProcessingConsent
+          purpose="reservation_processing"
+          required={true}
+          onConsentChange={setHasDataProcessingConsent}
+          description="We need to process your personal data to create and manage your reservation."
+        />
+
+        {errors.consent && (
+          <p className="text-red-400 text-sm flex items-center">
+            <AlertCircle className="w-4 h-4 mr-1" />
+            {errors.consent}
+          </p>
+        )}
+      </div>
+
       <div className="flex space-x-4">
         <button
           onClick={() => setStep(2)}
@@ -576,7 +642,7 @@ const ReservationForm: React.FC<ReservationFormProps> = ({
         </button>
         <button
           onClick={submitReservation}
-          disabled={isLoading}
+          disabled={isLoading || !hasDataProcessingConsent}
           className="flex-1 bg-royal-gradient-gold text-royal-charcoal py-3 px-6 rounded-royal font-semibold hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoading ? <LoadingSpinner /> : "Confirm Reservation"}

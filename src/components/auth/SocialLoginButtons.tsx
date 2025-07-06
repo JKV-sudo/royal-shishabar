@@ -18,7 +18,7 @@ const SocialLoginButtons = ({
 
   const handleGoogleLogin = async () => {
     try {
-      await SocialAuthService.signInWithGoogle();
+      await SocialAuthService.signInWithProvider("google");
       onSuccess?.("google");
       toast.success("Successfully signed in with Google!");
     } catch (error: any) {
@@ -55,7 +55,7 @@ const SocialLoginButtons = ({
           />
         </svg>
         <span className="text-gray-700 font-medium group-hover:text-gray-900 transition-colors">
-          Continue with Google
+          Mit Google fortfahren
         </span>
       </motion.button>
     );
@@ -68,7 +68,9 @@ const SocialLoginButtons = ({
           <div className="w-full border-t border-gray-300" />
         </div>
         <div className="relative flex justify-center text-sm">
-          <span className="px-2 bg-white text-gray-500">Or continue with</span>
+          <span className="px-2 bg-white text-gray-500">
+            Oder fortfahren mit
+          </span>
         </div>
       </div>
 
@@ -103,7 +105,7 @@ const SocialLoginButtons = ({
         </svg>
 
         <span className="text-gray-700 font-semibold text-lg group-hover:text-gray-900 transition-colors relative z-10">
-          {isLoading ? "Signing in..." : "Continue with Google"}
+          {isLoading ? "Anmeldung läuft..." : "Mit Google fortfahren"}
         </span>
 
         {/* Subtle shine effect */}
