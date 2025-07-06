@@ -4,15 +4,12 @@ import { Link } from "react-router-dom";
 import {
   Shield,
   Mail,
-  Phone,
   MapPin,
   Clock,
   User,
   Database,
   Lock,
   Eye,
-  Download,
-  Trash2,
   FileText,
 } from "lucide-react";
 

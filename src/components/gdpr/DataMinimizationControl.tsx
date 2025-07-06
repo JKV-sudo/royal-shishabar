@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Shield, Eye, EyeOff, Info } from "lucide-react";
-import { GDPRService } from "../../services/gdprService";
+// import { GDPRService } from "../../services/gdprService";
 import { ProcessingPurpose } from "../../types/gdpr";
 
 interface DataMinimizationControlProps {
@@ -26,7 +26,7 @@ interface DataField {
 export const DataMinimizationControl: React.FC<
   DataMinimizationControlProps
 > = ({ purpose, children, className = "" }) => {
-  const [minimizationRules, setMinimizationRules] = useState<string[]>([]);
+  // const [minimizationRules, setMinimizationRules] = useState<string[]>([]);
   const [showDataInfo, setShowDataInfo] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -37,8 +37,8 @@ export const DataMinimizationControl: React.FC<
   const loadMinimizationRules = async () => {
     try {
       setLoading(true);
-      const rules = await GDPRService.getDataMinimizationRules();
-      setMinimizationRules(rules[purpose] || []);
+      // const rules = await GDPRService.getDataMinimizationRules();
+      // setMinimizationRules(rules[purpose] || []);
     } catch (error) {
       console.error("Error loading data minimization rules:", error);
     } finally {

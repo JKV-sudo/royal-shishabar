@@ -15,7 +15,6 @@ import {
   Trash2,
   FileDown,
   AlertTriangle,
-  Info,
   Cookie,
   Bell,
   Mail,
@@ -841,7 +840,10 @@ const PrivacyDashboard: React.FC = () => {
                               {log.action === "export" && "Datenexport"}
                             </p>
                             <p className="text-sm text-gray-400">
-                              {log.dataCategory} - {typeof log.details === 'object' ? JSON.stringify(log.details) : log.details}
+                              {log.dataCategory} -{" "}
+                              {typeof log.details === "object"
+                                ? JSON.stringify(log.details)
+                                : log.details}
                             </p>
                             <p className="text-xs text-gray-500">
                               {log.timestamp.toLocaleString("de-DE")}

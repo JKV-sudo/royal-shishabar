@@ -375,7 +375,7 @@ export class GDPRService {
   }
 
   // Generate downloadable export file
-  private static async generateExportFile(userId: string, exportData: any): Promise<string> {
+  private static async generateExportFile(_userId: string, exportData: any): Promise<string> {
     try {
       // Create a comprehensive JSON export
       const exportJson = JSON.stringify(exportData, null, 2);
@@ -905,7 +905,7 @@ export class GDPRService {
     };
   }
 
-  private static getUserDataCategories(userId: string): DataCategory[] {
+  private static getUserDataCategories(_userId: string): DataCategory[] {
     // Return all categories - in practice, you'd check which categories have data
     return Object.keys(this.getDataCategories()) as DataCategory[];
   }
@@ -1028,15 +1028,15 @@ export class GDPRService {
     return completed.length > 0 ? completed[0].requestedAt : undefined;
   }
 
-  private static async getEmailSubscriptions(userId: string): Promise<any> {
-    // Implementation depends on your email service
-    return { newsletters: false, promotions: false };
-  }
+  // private static async getEmailSubscriptions(_userId: string): Promise<any> {
+  //   // Implementation depends on your email service
+  //   return { newsletters: false, promotions: false };
+  // }
 
-  private static async getCommunicationPreferences(userId: string): Promise<any> {
-    // Implementation depends on your communication system
-    return { sms: false, push: false, email: true };
-  }
+  // private static async getCommunicationPreferences(_userId: string): Promise<any> {
+  //   // Implementation depends on your communication system
+  //   return { sms: false, push: false, email: true };
+  // }
 
   // Compliance Status Check
   static async getGDPRComplianceStatus(userId: string): Promise<GDPRComplianceStatus> {
@@ -1070,7 +1070,7 @@ export class GDPRService {
   // Get admin statistics for GDPR dashboard
   static async getAdminGDPRStats(): Promise<any> {
     try {
-      const db = getFirestoreDB();
+      // const db = getFirestoreDB(); // Currently unused
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
