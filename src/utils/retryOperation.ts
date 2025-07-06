@@ -160,7 +160,7 @@ export const createCancellableOperation = <T>(
     try {
       return await operation(abortController.signal);
     } catch (error) {
-      if (error.name === 'AbortError') {
+      if (error instanceof Error && error.name === 'AbortError') {
         throw new Error('Operation was cancelled');
       }
       throw error;

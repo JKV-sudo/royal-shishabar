@@ -6,7 +6,6 @@ import {
   Users,
   CreditCard,
   Clock,
-  AlertTriangle,
   Shield,
   Scale,
   User,

@@ -242,7 +242,6 @@ const OrderReports: React.FC = () => {
 
     try {
       const doc = new jsPDF();
-      const dateRange = getDateRange();
 
       // Header
       doc.setFontSize(20);
@@ -600,7 +599,9 @@ const OrderReports: React.FC = () => {
                   onChange={(e) =>
                     setAdditionalFilters((prev) => ({
                       ...prev,
-                      status: e.target.value ? (e.target.value as OrderStatus) : undefined,
+                      status: e.target.value
+                        ? (e.target.value as OrderStatus)
+                        : undefined,
                     }))
                   }
                   className="w-full px-3 py-2 bg-royal-charcoal text-royal-cream border border-royal-gold/30 rounded focus:outline-none focus:ring-1 focus:ring-royal-gold"

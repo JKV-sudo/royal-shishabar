@@ -61,6 +61,7 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
     initialData: {
       statuses: [],
       stats: {
+        totalTables: 0,
         available: 0,
         occupied: 0,
         ordersInProgress: 0,
@@ -85,11 +86,7 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
 
   // Use realtime data loader for live updates
   const {
-    data: realtimeStatuses,
-    loading: loadingRealtime,
-    error: realtimeError,
     setupRealtimeListener,
-    cleanup: cleanupRealtime,
   } = useRealtimeAdminData<TableStatus[]>([], (data) =>
     Array.isArray(data) ? data.length === 0 : !data
   );
@@ -108,14 +105,31 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
       } catch (error) {
         console.warn("⚠️ Failed to calculate stats, using defaults:", error);
         // Return default stats if calculation fails
+        const totalTables = statuses.length;
+        const available = statuses.filter(
+          (s) => s.status === "available"
+        ).length;
+        const occupied = statuses.filter(
+          (s) =>
+            s.status === "seated" ||
+            s.status === "ordered" ||
+            s.status === "served"
+        ).length;
+        const ordersInProgress = statuses.filter(
+          (s) => s.currentOrder !== null
+        ).length;
+        const awaitingPayment = statuses.filter(
+          (s) => s.status === "awaiting_payment"
+        ).length;
+        const overdue = statuses.filter((s) => s.status === "overdue").length;
+
         return {
-          available: statuses.filter((s) => s.status === "available").length,
-          occupied: statuses.filter((s) => s.status === "occupied").length,
-          ordersInProgress: statuses.filter((s) => s.hasActiveOrder).length,
-          awaitingPayment: statuses.filter(
-            (s) => s.status === "awaiting_payment"
-          ).length,
-          overdue: statuses.filter((s) => s.isOverdue).length,
+          totalTables,
+          available,
+          occupied,
+          ordersInProgress,
+          awaitingPayment,
+          overdue,
           averageWaitTime: 0,
           revenue: 0,
         };
@@ -131,7 +145,7 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
     loadInitialData(async () => {
       // Load statuses and calculate stats in parallel
       const statuses = await retryFirebaseOperation(
-        () => TableStatusService.getCurrentTableStatuses(),
+        () => TableStatusService.getTableStatuses(),
         3
       );
 
@@ -139,7 +153,7 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
 
       return { statuses, stats };
     });
-  }, [calculateStats]);
+  }, [loadInitialData, calculateStats]);
 
   // Set up realtime listener after initial data is loaded
   useEffect(() => {
@@ -154,8 +168,12 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
             try {
               console.log("📊 Realtime table status update:", {
                 statuses: statuses.length,
-                occupied: statuses.filter((s) => s.status === "occupied")
-                  .length,
+                occupied: statuses.filter(
+                  (s) =>
+                    s.status === "seated" ||
+                    s.status === "ordered" ||
+                    s.status === "served"
+                ).length,
               });
 
               // Calculate stats asynchronously but don't block UI
@@ -200,16 +218,13 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
   const handleConfigUpdate = useCallback(async () => {
     try {
       await retryFirebaseOperation(
-        () => TableStatusService.updateConfig(config),
-        3
+        () => Promise.resolve(TableStatusService.updateConfig(config)),
+        2
       );
-      setShowConfig(false);
       toast.success("Konfiguration aktualisiert");
-
-      // Reload data to reflect new config
-      reloadInitialData();
+      await reloadInitialData();
     } catch (error) {
-      console.error("❌ Error updating config:", error);
+      console.error("❌ Failed to update config:", error);
       toast.error("Fehler beim Aktualisieren der Konfiguration");
     }
   }, [config, reloadInitialData]);
@@ -225,16 +240,7 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
     }
   };
 
-  const getLocationDisplayName = (location: string) => {
-    switch (location) {
-      case "vip":
-        return "VIP";
-      case "outdoor":
-        return "Outdoor";
-      default:
-        return "Indoor";
-    }
-  };
+
 
   const formatWaitingTime = (minutes: number): string => {
     if (minutes < 60) {
@@ -300,6 +306,7 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
 
   const tableStatuses = initialData?.statuses || [];
   const stats = initialData?.stats || {
+    totalTables: 0,
     available: 0,
     occupied: 0,
     ordersInProgress: 0,
@@ -320,12 +327,7 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
           <p className="text-royal-cream/70">
             Echtzeitüberwachung von Tischreservierungen und Bestellungen
           </p>
-          {loadingRealtime && (
-            <div className="flex items-center space-x-2 mt-2 text-blue-600">
-              <RefreshCw className="w-4 h-4 animate-spin" />
-              <span className="text-sm">Live-Update...</span>
-            </div>
-          )}
+
         </div>
         <div className="flex space-x-2">
           <button
@@ -360,17 +362,7 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
         </div>
       </div>
 
-      {/* Error indicator for realtime updates */}
-      {realtimeError && (
-        <div className="bg-orange-50 border border-orange-200 rounded-md p-4">
-          <div className="flex items-center space-x-2">
-            <AlertTriangle className="w-4 h-4 text-orange-600" />
-            <span className="text-sm text-orange-800">
-              Live-Updates unterbrochen: {realtimeError}
-            </span>
-          </div>
-        </div>
-      )}
+
 
       {/* Stats Dashboard */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
@@ -679,9 +671,9 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
         {tableStatuses
           .sort((a, b) => a.table.number - b.table.number)
           .map((tableStatus) => {
-            const isOverdue = tableStatus.isOverdue;
-            const isWarning =
-              tableStatus.waitingTimeMinutes > config.warningTimeMinutes;
+            const isOverdue = tableStatus.status === "overdue";
+            const waitingTime = tableStatus.waitingTime || 0;
+            const isWarning = waitingTime > config.warningTimeMinutes;
 
             return (
               <motion.div
@@ -699,7 +691,7 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
                       ? "border-yellow-400 bg-yellow-100"
                       : tableStatus.status === "available"
                       ? "border-green-300 bg-green-100"
-                      : tableStatus.status === "occupied"
+                      : tableStatus.status === "seated" || tableStatus.status === "ordered" || tableStatus.status === "served"
                       ? "border-orange-300 bg-orange-100"
                       : tableStatus.status === "reserved"
                       ? "border-blue-300 bg-blue-100"
@@ -717,7 +709,7 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
                   </span>
                   <div className="flex items-center space-x-1">
                     {getLocationIcon(tableStatus.table.location)}
-                    {tableStatus.hasActiveOrder && (
+                    {tableStatus.currentOrder && (
                       <span className="text-xs">🍽️</span>
                     )}
                   </div>
@@ -728,7 +720,7 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
                   <div className="text-2xl">
                     {tableStatus.status === "available" && "✅"}
                     {tableStatus.status === "reserved" && "📅"}
-                    {tableStatus.status === "occupied" && "👥"}
+                    {(tableStatus.status === "seated" || tableStatus.status === "ordered" || tableStatus.status === "served") && "👥"}
                     {tableStatus.status === "awaiting_payment" && "💳"}
                     {tableStatus.status === "unavailable" && "❌"}
                     {isOverdue && "⚠️"}
@@ -736,7 +728,7 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
                 </div>
 
                 {/* Waiting Time */}
-                {tableStatus.waitingTimeMinutes > 0 && (
+                {waitingTime > 0 && (
                   <div className="text-center">
                     <div
                       className={`text-xs font-medium ${
@@ -747,7 +739,7 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
                           : "text-gray-700"
                       }`}
                     >
-                      {formatWaitingTime(tableStatus.waitingTimeMinutes)}
+                      {formatWaitingTime(waitingTime)}
                     </div>
                   </div>
                 )}
@@ -759,11 +751,11 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
                   </span>
                 </div>
 
-                {/* Revenue indicator */}
-                {tableStatus.currentRevenue > 0 && (
+                {/* Order Total (if available) */}
+                {tableStatus.currentOrder && (
                   <div className="absolute top-1 right-1">
                     <span className="text-xs text-green-600 font-medium">
-                      €{tableStatus.currentRevenue.toFixed(0)}
+                      €{tableStatus.currentOrder.totalAmount.toFixed(0)}
                     </span>
                   </div>
                 )}

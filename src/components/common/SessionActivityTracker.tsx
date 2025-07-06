@@ -35,7 +35,7 @@ const SessionActivityTracker: React.FC = () => {
       const now = Date.now();
       const timeSinceActivity = now - lastActivityRef.current;
       const ACTIVITY_THRESHOLD = 30 * 60 * 1000; // 30 minutes
-      const EXTEND_INTERVAL = 10 * 60 * 1000; // Check every 10 minutes
+      // const EXTEND_INTERVAL = 10 * 60 * 1000; // Check every 10 minutes
 
       // Only extend if user has been active recently
       if (timeSinceActivity < ACTIVITY_THRESHOLD) {

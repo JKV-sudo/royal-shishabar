@@ -15,7 +15,6 @@ import { useAdminDataLoader } from "../../hooks/useAdminDataLoader";
 import { retryFirebaseOperation } from "../../utils/retryOperation";
 import {
   ErrorEmptyState,
-  NoDataEmptyState,
   CreateEmptyState,
 } from "../common/EmptyState";
 import { toast } from "react-hot-toast";

@@ -1,13 +1,5 @@
 import React from "react";
-import {
-  RefreshCw,
-  AlertCircle,
-  Plus,
-  Search,
-  Database,
-  Wifi,
-  XCircle,
-} from "lucide-react";
+import { RefreshCw, Plus, Search, Database, Wifi, XCircle } from "lucide-react";
 
 export interface EmptyStateAction {
   label: string;
