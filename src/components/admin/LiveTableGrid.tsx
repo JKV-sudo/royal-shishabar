@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Clock,
@@ -17,23 +17,31 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { TableStatusService } from "../../services/tableStatusService";
-// import { ReservationOrderIntegrationService } from "../../services/reservationOrderIntegrationService";
 import {
   TableStatus,
   TableStatusStats,
   TableStatusConfig,
 } from "../../types/tableStatus";
+import {
+  useRealtimeAdminData,
+  useAdminDataLoader,
+} from "../../hooks/useAdminDataLoader";
+import { retryFirebaseOperation } from "../../utils/retryOperation";
+import { ErrorEmptyState, NoDataEmptyState } from "../common/EmptyState";
+import { toast } from "react-hot-toast";
 
 interface LiveTableGridProps {
   onTableClick?: (tableStatus: TableStatus) => void;
 }
 
+interface LiveTableData {
+  statuses: TableStatus[];
+  stats: TableStatusStats;
+}
+
 export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
   onTableClick,
 }) => {
-  const [tableStatuses, setTableStatuses] = useState<TableStatus[]>([]);
-  const [stats, setStats] = useState<TableStatusStats | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [showConfig, setShowConfig] = useState(false);
   const [showLegend, setShowLegend] = useState(false);
   const [config, setConfig] = useState<TableStatusConfig>({
@@ -42,26 +50,169 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
     maxServiceTimeMinutes: 30,
   });
 
-  useEffect(() => {
-    // Set up real-time listener
-    const unsubscribe = TableStatusService.onTableStatusChange(
-      async (statuses) => {
-        setTableStatuses(statuses);
-        const statsData = await TableStatusService.getTableStatusStats(
-          statuses
+  // Use our robust data loader for initial data
+  const {
+    data: initialData,
+    loading: loadingInitial,
+    error: initialError,
+    loadData: loadInitialData,
+    reload: reloadInitialData,
+  } = useAdminDataLoader<LiveTableData>({
+    initialData: {
+      statuses: [],
+      stats: {
+        available: 0,
+        occupied: 0,
+        ordersInProgress: 0,
+        awaitingPayment: 0,
+        overdue: 0,
+        averageWaitTime: 0,
+        revenue: 0,
+      },
+    },
+    onSuccess: (data) => {
+      console.log("📊 LiveTableGrid: Initial data loaded successfully", {
+        statuses: data.statuses.length,
+        totalRevenue: data.stats.revenue,
+      });
+    },
+    onError: (error) => {
+      console.error("❌ LiveTableGrid: Failed to load initial data:", error);
+      toast.error("Fehler beim Laden der Tischstatus");
+    },
+    checkEmpty: (data) => data.statuses.length === 0,
+  });
+
+  // Use realtime data loader for live updates
+  const {
+    data: realtimeStatuses,
+    loading: loadingRealtime,
+    error: realtimeError,
+    setupRealtimeListener,
+    cleanup: cleanupRealtime,
+  } = useRealtimeAdminData<TableStatus[]>([], (data) =>
+    Array.isArray(data) ? data.length === 0 : !data
+  );
+
+  // Calculate stats from statuses (optimized with memoization)
+  const calculateStats = useCallback(
+    async (statuses: TableStatus[]): Promise<TableStatusStats> => {
+      try {
+        // Use parallel processing for better performance
+        const statsPromise = retryFirebaseOperation(
+          () => TableStatusService.getTableStatusStats(statuses),
+          2 // Fewer retries for stats calculation
         );
-        setStats(statsData);
-        setIsLoading(false);
+
+        return await statsPromise;
+      } catch (error) {
+        console.warn("⚠️ Failed to calculate stats, using defaults:", error);
+        // Return default stats if calculation fails
+        return {
+          available: statuses.filter((s) => s.status === "available").length,
+          occupied: statuses.filter((s) => s.status === "occupied").length,
+          ordersInProgress: statuses.filter((s) => s.hasActiveOrder).length,
+          awaitingPayment: statuses.filter(
+            (s) => s.status === "awaiting_payment"
+          ).length,
+          overdue: statuses.filter((s) => s.isOverdue).length,
+          averageWaitTime: 0,
+          revenue: 0,
+        };
       }
+    },
+    []
+  );
+
+  // Load initial data when component mounts
+  useEffect(() => {
+    console.log("🔄 LiveTableGrid: Loading initial data");
+
+    loadInitialData(async () => {
+      // Load statuses and calculate stats in parallel
+      const statuses = await retryFirebaseOperation(
+        () => TableStatusService.getCurrentTableStatuses(),
+        3
+      );
+
+      const stats = await calculateStats(statuses);
+
+      return { statuses, stats };
+    });
+  }, [calculateStats]);
+
+  // Set up realtime listener after initial data is loaded
+  useEffect(() => {
+    if (!initialData || loadingInitial) return;
+
+    console.log("🔄 LiveTableGrid: Setting up realtime listener");
+
+    const unsubscribe = setupRealtimeListener(
+      (callback) => {
+        return TableStatusService.onTableStatusChange(
+          async (statuses: TableStatus[]) => {
+            try {
+              console.log("📊 Realtime table status update:", {
+                statuses: statuses.length,
+                occupied: statuses.filter((s) => s.status === "occupied")
+                  .length,
+              });
+
+              // Calculate stats asynchronously but don't block UI
+              calculateStats(statuses)
+                .then((stats) => {
+                  // Update the complete data
+                  loadInitialData(async () => ({ statuses, stats }), {
+                    showLoadingState: false, // Don't show loading for realtime updates
+                    preserveData: false,
+                  });
+                })
+                .catch((error) => {
+                  console.warn(
+                    "⚠️ Stats calculation failed in realtime update:",
+                    error
+                  );
+                });
+
+              callback(statuses);
+            } catch (error) {
+              console.error("❌ Error processing realtime update:", error);
+            }
+          }
+        );
+      },
+      (statuses: TableStatus[]) => statuses
     );
 
-    return unsubscribe;
-  }, []);
+    return () => {
+      console.log("🔄 Cleaning up LiveTableGrid realtime listener");
+      unsubscribe();
+    };
+  }, [
+    initialData,
+    loadingInitial,
+    setupRealtimeListener,
+    calculateStats,
+    loadInitialData,
+  ]);
 
-  const handleConfigUpdate = () => {
-    TableStatusService.updateConfig(config);
-    setShowConfig(false);
-  };
+  // Handle config update
+  const handleConfigUpdate = useCallback(async () => {
+    try {
+      await retryFirebaseOperation(
+        () => TableStatusService.updateConfig(config),
+        3
+      );
+      setShowConfig(false);
+      toast.success("Konfiguration aktualisiert");
+
+      // Reload data to reflect new config
+      reloadInitialData();
+    } catch (error) {
+      console.error("❌ Error updating config:", error);
+      toast.error("Fehler beim Aktualisieren der Konfiguration");
+    }
+  }, [config, reloadInitialData]);
 
   const getLocationIcon = (location: string) => {
     switch (location) {
@@ -94,13 +245,69 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
     return `${hours}h ${mins}m`;
   };
 
-  if (isLoading) {
+  // Handle loading state
+  if (loadingInitial) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+      <div className="p-6">
+        <div className="flex items-center justify-center space-x-2 mb-6">
+          <RefreshCw className="w-5 h-5 animate-spin" />
+          <span>Laden der Tischstatus...</span>
+        </div>
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
+          <div className="grid grid-cols-7 gap-4 mb-6">
+            {[...Array(7)].map((_, i) => (
+              <div key={i} className="h-20 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+          <div className="grid grid-cols-6 gap-4">
+            {[...Array(30)].map((_, i) => (
+              <div key={i} className="h-24 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
+
+  // Handle error state
+  if (initialError) {
+    return (
+      <div className="p-6">
+        <ErrorEmptyState
+          title="Fehler beim Laden des Tischstatus"
+          description={initialError}
+          onRetry={reloadInitialData}
+          retrying={loadingInitial}
+        />
+      </div>
+    );
+  }
+
+  // Handle empty state
+  if (initialData?.statuses.length === 0) {
+    return (
+      <div className="p-6">
+        <NoDataEmptyState
+          title="Keine Tische verfügbar"
+          description="Es sind derzeit keine Tische konfiguriert."
+          onRefresh={reloadInitialData}
+          refreshing={loadingInitial}
+        />
+      </div>
+    );
+  }
+
+  const tableStatuses = initialData?.statuses || [];
+  const stats = initialData?.stats || {
+    available: 0,
+    occupied: 0,
+    ordersInProgress: 0,
+    awaitingPayment: 0,
+    overdue: 0,
+    averageWaitTime: 0,
+    revenue: 0,
+  };
 
   return (
     <div className="space-y-6">
@@ -108,11 +315,17 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
       <div className="flex justify-between items-start">
         <div>
           <h2 className="text-2xl font-bold text-royal-cream mb-2">
-            Live Table Status
+            Live Tischstatus ({tableStatuses.length} Tische)
           </h2>
           <p className="text-royal-cream/70">
-            Real-time monitoring of table reservations and orders
+            Echtzeitüberwachung von Tischreservierungen und Bestellungen
           </p>
+          {loadingRealtime && (
+            <div className="flex items-center space-x-2 mt-2 text-blue-600">
+              <RefreshCw className="w-4 h-4 animate-spin" />
+              <span className="text-sm">Live-Update...</span>
+            </div>
+          )}
         </div>
         <div className="flex space-x-2">
           <button
@@ -120,7 +333,7 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
             className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
           >
             <HelpCircle className="w-4 h-4" />
-            <span>Legend</span>
+            <span>Legende</span>
             {showLegend ? (
               <ChevronUp className="w-4 h-4" />
             ) : (
@@ -135,103 +348,114 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
             <span>Config</span>
           </button>
           <button
-            onClick={() => window.location.reload()}
-            className="flex items-center space-x-2 bg-royal-gradient-gold text-royal-charcoal px-4 py-2 rounded-lg hover:shadow-lg transition-all duration-200"
+            onClick={reloadInitialData}
+            disabled={loadingInitial}
+            className="flex items-center space-x-2 bg-royal-gradient-gold text-royal-charcoal px-4 py-2 rounded-lg hover:shadow-lg transition-all duration-200 disabled:opacity-50"
           >
-            <RefreshCw className="w-4 h-4" />
-            <span>Refresh</span>
+            <RefreshCw
+              className={`w-4 h-4 ${loadingInitial ? "animate-spin" : ""}`}
+            />
+            <span>Aktualisieren</span>
           </button>
         </div>
       </div>
 
-      {/* Stats Dashboard */}
-      {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-          <div className="bg-royal-charcoal p-4 rounded-lg border border-royal-gold/20">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-royal-cream/70 text-sm">Available</p>
-                <p className="text-xl font-bold text-green-400">
-                  {stats.available}
-                </p>
-              </div>
-              <div className="text-green-400">✅</div>
-            </div>
-          </div>
-
-          <div className="bg-royal-charcoal p-4 rounded-lg border border-royal-gold/20">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-royal-cream/70 text-sm">Occupied</p>
-                <p className="text-xl font-bold text-orange-400">
-                  {stats.occupied}
-                </p>
-              </div>
-              <Users className="w-6 h-6 text-orange-400" />
-            </div>
-          </div>
-
-          <div className="bg-royal-charcoal p-4 rounded-lg border border-royal-gold/20">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-royal-cream/70 text-sm">Orders</p>
-                <p className="text-xl font-bold text-purple-400">
-                  {stats.ordersInProgress}
-                </p>
-              </div>
-              <div className="text-purple-400">🍽️</div>
-            </div>
-          </div>
-
-          <div className="bg-royal-charcoal p-4 rounded-lg border border-royal-gold/20">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-royal-cream/70 text-sm">Payment</p>
-                <p className="text-xl font-bold text-indigo-400">
-                  {stats.awaitingPayment}
-                </p>
-              </div>
-              <DollarSign className="w-6 h-6 text-indigo-400" />
-            </div>
-          </div>
-
-          <div className="bg-royal-charcoal p-4 rounded-lg border border-royal-gold/20">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-royal-cream/70 text-sm">Overdue</p>
-                <p className="text-xl font-bold text-red-400">
-                  {stats.overdue}
-                </p>
-              </div>
-              <AlertTriangle className="w-6 h-6 text-red-400" />
-            </div>
-          </div>
-
-          <div className="bg-royal-charcoal p-4 rounded-lg border border-royal-gold/20">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-royal-cream/70 text-sm">Avg Wait</p>
-                <p className="text-xl font-bold text-yellow-400">
-                  {Math.round(stats.averageWaitTime)}m
-                </p>
-              </div>
-              <Clock className="w-6 h-6 text-yellow-400" />
-            </div>
-          </div>
-
-          <div className="bg-royal-charcoal p-4 rounded-lg border border-royal-gold/20">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-royal-cream/70 text-sm">Revenue</p>
-                <p className="text-xl font-bold text-royal-gold">
-                  €{stats.revenue.toFixed(0)}
-                </p>
-              </div>
-              <TrendingUp className="w-6 h-6 text-royal-gold" />
-            </div>
+      {/* Error indicator for realtime updates */}
+      {realtimeError && (
+        <div className="bg-orange-50 border border-orange-200 rounded-md p-4">
+          <div className="flex items-center space-x-2">
+            <AlertTriangle className="w-4 h-4 text-orange-600" />
+            <span className="text-sm text-orange-800">
+              Live-Updates unterbrochen: {realtimeError}
+            </span>
           </div>
         </div>
       )}
+
+      {/* Stats Dashboard */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+        <div className="bg-royal-charcoal p-4 rounded-lg border border-royal-gold/20">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-royal-cream/70 text-sm">Verfügbar</p>
+              <p className="text-xl font-bold text-green-400">
+                {stats.available}
+              </p>
+            </div>
+            <div className="text-green-400">✅</div>
+          </div>
+        </div>
+
+        <div className="bg-royal-charcoal p-4 rounded-lg border border-royal-gold/20">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-royal-cream/70 text-sm">Besetzt</p>
+              <p className="text-xl font-bold text-orange-400">
+                {stats.occupied}
+              </p>
+            </div>
+            <Users className="w-6 h-6 text-orange-400" />
+          </div>
+        </div>
+
+        <div className="bg-royal-charcoal p-4 rounded-lg border border-royal-gold/20">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-royal-cream/70 text-sm">Bestellungen</p>
+              <p className="text-xl font-bold text-purple-400">
+                {stats.ordersInProgress}
+              </p>
+            </div>
+            <div className="text-purple-400">🍽️</div>
+          </div>
+        </div>
+
+        <div className="bg-royal-charcoal p-4 rounded-lg border border-royal-gold/20">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-royal-cream/70 text-sm">Zahlung</p>
+              <p className="text-xl font-bold text-indigo-400">
+                {stats.awaitingPayment}
+              </p>
+            </div>
+            <DollarSign className="w-6 h-6 text-indigo-400" />
+          </div>
+        </div>
+
+        <div className="bg-royal-charcoal p-4 rounded-lg border border-royal-gold/20">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-royal-cream/70 text-sm">Überfällig</p>
+              <p className="text-xl font-bold text-red-400">{stats.overdue}</p>
+            </div>
+            <AlertTriangle className="w-6 h-6 text-red-400" />
+          </div>
+        </div>
+
+        <div className="bg-royal-charcoal p-4 rounded-lg border border-royal-gold/20">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-royal-cream/70 text-sm">Ø Wartezeit</p>
+              <p className="text-xl font-bold text-yellow-400">
+                {Math.round(stats.averageWaitTime)}m
+              </p>
+            </div>
+            <Clock className="w-6 h-6 text-yellow-400" />
+          </div>
+        </div>
+
+        <div className="bg-royal-charcoal p-4 rounded-lg border border-royal-gold/20">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-royal-cream/70 text-sm">Umsatz</p>
+              <p className="text-xl font-bold text-royal-gold">
+                €{stats.revenue.toFixed(0)}
+              </p>
+            </div>
+            <TrendingUp className="w-6 h-6 text-royal-gold" />
+          </div>
+        </div>
+      </div>
 
       {/* Legend */}
       {showLegend && (
@@ -243,14 +467,16 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
         >
           <div className="flex items-center mb-4">
             <Info className="w-5 h-5 text-royal-gold mr-2" />
-            <h3 className="text-lg font-bold text-royal-cream">Staff Legend</h3>
+            <h3 className="text-lg font-bold text-royal-cream">
+              Personal Legende
+            </h3>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Table Status */}
             <div>
               <h4 className="text-royal-cream font-semibold mb-3 text-sm uppercase tracking-wide">
-                Table Status
+                Tischstatus
               </h4>
               <div className="space-y-2">
                 <div className="flex items-center space-x-3">
@@ -258,9 +484,9 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
                     <span className="text-sm">✅</span>
                   </div>
                   <div className="text-royal-cream/90 text-sm">
-                    <div className="font-medium">Available</div>
+                    <div className="font-medium">Verfügbar</div>
                     <div className="text-xs text-royal-cream/60">
-                      Ready for customers
+                      Bereit für Kunden
                     </div>
                   </div>
                 </div>
@@ -270,9 +496,9 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
                     <span className="text-sm">📅</span>
                   </div>
                   <div className="text-royal-cream/90 text-sm">
-                    <div className="font-medium">Reserved</div>
+                    <div className="font-medium">Reserviert</div>
                     <div className="text-xs text-royal-cream/60">
-                      Customer hasn't arrived
+                      Kunde noch nicht da
                     </div>
                   </div>
                 </div>
@@ -282,9 +508,9 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
                     <span className="text-sm">👥</span>
                   </div>
                   <div className="text-royal-cream/90 text-sm">
-                    <div className="font-medium">Seated</div>
+                    <div className="font-medium">Besetzt</div>
                     <div className="text-xs text-royal-cream/60">
-                      Customer seated, no order
+                      Kunde sitzt, keine Bestellung
                     </div>
                   </div>
                 </div>
@@ -294,9 +520,9 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
                     <span className="text-sm">🍽️</span>
                   </div>
                   <div className="text-royal-cream/90 text-sm">
-                    <div className="font-medium">Order Placed</div>
+                    <div className="font-medium">Bestellung aufgegeben</div>
                     <div className="text-xs text-royal-cream/60">
-                      Kitchen preparing
+                      Küche bereitet zu
                     </div>
                   </div>
                 </div>
@@ -306,9 +532,9 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
                     <span className="text-sm">🥘</span>
                   </div>
                   <div className="text-royal-cream/90 text-sm">
-                    <div className="font-medium">Food Served</div>
+                    <div className="font-medium">Essen serviert</div>
                     <div className="text-xs text-royal-cream/60">
-                      Customers eating
+                      Kunden essen
                     </div>
                   </div>
                 </div>
@@ -318,9 +544,9 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
                     <span className="text-sm">💳</span>
                   </div>
                   <div className="text-royal-cream/90 text-sm">
-                    <div className="font-medium">Awaiting Payment</div>
+                    <div className="font-medium">Warten auf Zahlung</div>
                     <div className="text-xs text-royal-cream/60">
-                      Ready to checkout
+                      Bereit zum Kassieren
                     </div>
                   </div>
                 </div>
@@ -330,9 +556,9 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
                     <span className="text-sm">⚠️</span>
                   </div>
                   <div className="text-royal-cream/90 text-sm">
-                    <div className="font-medium text-red-400">OVERDUE</div>
+                    <div className="font-medium text-red-400">ÜBERFÄLLIG</div>
                     <div className="text-xs text-red-300">
-                      Needs immediate attention!
+                      Braucht sofortige Aufmerksamkeit!
                     </div>
                   </div>
                 </div>
@@ -342,9 +568,9 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
                     <span className="text-sm">❌</span>
                   </div>
                   <div className="text-royal-cream/90 text-sm">
-                    <div className="font-medium">Unavailable</div>
+                    <div className="font-medium">Nicht verfügbar</div>
                     <div className="text-xs text-royal-cream/60">
-                      Disabled/maintenance
+                      Deaktiviert/Wartung
                     </div>
                   </div>
                 </div>
@@ -354,15 +580,15 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
             {/* Location Types */}
             <div>
               <h4 className="text-royal-cream font-semibold mb-3 text-sm uppercase tracking-wide">
-                Location Types
+                Bereiche
               </h4>
               <div className="space-y-2">
                 <div className="flex items-center space-x-3">
                   <Crown className="w-5 h-5 text-yellow-500" />
                   <div className="text-royal-cream/90 text-sm">
-                    <div className="font-medium">VIP Area</div>
+                    <div className="font-medium">VIP Bereich</div>
                     <div className="text-xs text-royal-cream/60">
-                      Premium seating (Table 20)
+                      Premium Sitzplätze (Tisch 20)
                     </div>
                   </div>
                 </div>
@@ -370,9 +596,9 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
                 <div className="flex items-center space-x-3">
                   <Star className="w-5 h-5 text-green-500" />
                   <div className="text-royal-cream/90 text-sm">
-                    <div className="font-medium">Outdoor</div>
+                    <div className="font-medium">Außenbereich</div>
                     <div className="text-xs text-royal-cream/60">
-                      Terrace area (Tables 21-30)
+                      Terrasse (Tische 21-30)
                     </div>
                   </div>
                 </div>
@@ -380,192 +606,190 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
                 <div className="flex items-center space-x-3">
                   <MapPin className="w-5 h-5 text-blue-500" />
                   <div className="text-royal-cream/90 text-sm">
-                    <div className="font-medium">Indoor</div>
+                    <div className="font-medium">Innenbereich</div>
                     <div className="text-xs text-royal-cream/60">
-                      Main dining area (Tables 1-19)
+                      Hauptrestaurant (Tische 1-19)
                     </div>
                   </div>
                 </div>
               </div>
 
               <h4 className="text-royal-cream font-semibold mb-3 mt-6 text-sm uppercase tracking-wide">
-                Timing Alerts
+                Zeitwarnungen
               </h4>
               <div className="space-y-2">
                 <div className="flex items-center space-x-3">
                   <Clock className="w-5 h-5 text-yellow-400" />
                   <div className="text-royal-cream/90 text-sm">
-                    <div className="font-medium">45 minutes</div>
+                    <div className="font-medium">
+                      {config.warningTimeMinutes} Minuten
+                    </div>
                     <div className="text-xs text-royal-cream/60">
-                      Yellow warning
+                      Gelbe Warnung
                     </div>
                   </div>
                 </div>
 
                 <div className="flex items-center space-x-3">
-                  <AlertTriangle className="w-5 h-5 text-red-400 animate-bounce" />
+                  <AlertTriangle className="w-5 h-5 text-red-400" />
                   <div className="text-royal-cream/90 text-sm">
-                    <div className="font-medium">90 minutes</div>
-                    <div className="text-xs text-red-300">
-                      Red alert - Take action!
+                    <div className="font-medium">
+                      {config.overdueTimeMinutes} Minuten
+                    </div>
+                    <div className="text-xs text-royal-cream/60">
+                      Rote Überfälligkeit
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Information Display */}
+            {/* Quick Actions */}
             <div>
               <h4 className="text-royal-cream font-semibold mb-3 text-sm uppercase tracking-wide">
-                Information Shown
+                Schnellaktionen
               </h4>
-              <div className="space-y-3">
-                <div className="bg-royal-charcoal-dark p-3 rounded border border-royal-gold/20">
-                  <div className="text-center">
-                    <div className="flex items-center justify-center space-x-1 mb-1">
-                      <MapPin className="w-4 h-4 text-blue-500" />
-                      <span className="font-bold text-lg">T5</span>
-                    </div>
-                    <div className="text-xs opacity-75">Indoor</div>
-                    <div className="text-lg mt-1">🍽️</div>
-                    <div className="text-xs font-medium">Order Placed</div>
-                    <div className="text-xs font-medium mt-1">John Doe</div>
-                    <div className="text-xs opacity-75">4 people</div>
-                    <div className="text-xs font-bold mt-1">25m</div>
-                    <div className="text-xs font-bold">€45.50</div>
+              <div className="space-y-2 text-sm text-royal-cream/90">
+                <div>
+                  <div className="font-medium">Tisch anklicken</div>
+                  <div className="text-xs text-royal-cream/60">
+                    Details und Aktionen anzeigen
                   </div>
                 </div>
-
-                <div className="text-royal-cream/70 text-xs">
-                  <div>
-                    <strong>T5:</strong> Table number
-                  </div>
-                  <div>
-                    <strong>Indoor:</strong> Location type
-                  </div>
-                  <div>
-                    <strong>John Doe:</strong> Customer name
-                  </div>
-                  <div>
-                    <strong>4 people:</strong> Party size
-                  </div>
-                  <div>
-                    <strong>25m:</strong> Waiting time
-                  </div>
-                  <div>
-                    <strong>€45.50:</strong> Order amount
+                <div>
+                  <div className="font-medium">Automatische Updates</div>
+                  <div className="text-xs text-royal-cream/60">
+                    Status aktualisiert sich live
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-6 p-4 bg-royal-gold/10 rounded-lg border border-royal-gold/30">
-            <div className="flex items-start space-x-2">
-              <Info className="w-5 h-5 text-royal-gold mt-0.5" />
-              <div className="text-royal-cream/90 text-sm">
-                <div className="font-semibold mb-1">Quick Tips:</div>
-                <ul className="list-disc list-inside space-y-1 text-xs">
-                  <li>Click any table for detailed information</li>
-                  <li>Red pulsing tables need immediate attention</li>
-                  <li>Use Config to adjust timing thresholds</li>
-                  <li>System updates in real-time automatically</li>
-                </ul>
+                <div>
+                  <div className="font-medium">Konfiguration</div>
+                  <div className="text-xs text-royal-cream/60">
+                    Zeitlimits anpassen
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </motion.div>
       )}
 
-      {/* Table Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
-        {tableStatuses.map((tableStatus) => (
-          <motion.div
-            key={tableStatus.table.id}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className={`relative p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 hover:scale-105 ${TableStatusService.getStatusColor(
-              tableStatus.status
-            )}`}
-            onClick={() => onTableClick?.(tableStatus)}
-          >
-            {/* Table Number */}
-            <div className="text-center mb-2">
-              <div className="flex items-center justify-center space-x-1 mb-1">
-                {getLocationIcon(tableStatus.table.location)}
-                <span className="font-bold text-lg">
-                  T{tableStatus.table.number}
-                </span>
-              </div>
-              <div className="text-xs opacity-75">
-                {getLocationDisplayName(tableStatus.table.location)}
-              </div>
-            </div>
+      {/* Tables Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-10 gap-3">
+        {tableStatuses
+          .sort((a, b) => a.table.number - b.table.number)
+          .map((tableStatus) => {
+            const isOverdue = tableStatus.isOverdue;
+            const isWarning =
+              tableStatus.waitingTimeMinutes > config.warningTimeMinutes;
 
-            {/* Status */}
-            <div className="text-center mb-2">
-              <div className="text-lg">
-                {TableStatusService.getStatusIcon(tableStatus.status)}
-              </div>
-              <div className="text-xs font-medium">
-                {TableStatusService.getStatusDisplayName(tableStatus.status)}
-              </div>
-            </div>
-
-            {/* Customer Info */}
-            {tableStatus.customerName && (
-              <div className="text-center mb-2">
-                <div className="text-xs font-medium truncate">
-                  {tableStatus.customerName}
+            return (
+              <motion.div
+                key={tableStatus.table.id}
+                layout
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => onTableClick?.(tableStatus)}
+                className={`
+                  relative cursor-pointer rounded-lg border-2 p-3 transition-all duration-200
+                  ${
+                    isOverdue
+                      ? "border-red-400 bg-red-100 animate-pulse"
+                      : isWarning
+                      ? "border-yellow-400 bg-yellow-100"
+                      : tableStatus.status === "available"
+                      ? "border-green-300 bg-green-100"
+                      : tableStatus.status === "occupied"
+                      ? "border-orange-300 bg-orange-100"
+                      : tableStatus.status === "reserved"
+                      ? "border-blue-300 bg-blue-100"
+                      : tableStatus.status === "awaiting_payment"
+                      ? "border-indigo-300 bg-indigo-100"
+                      : "border-gray-300 bg-gray-100"
+                  }
+                  hover:shadow-lg
+                `}
+              >
+                {/* Table Number */}
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-bold text-lg">
+                    {tableStatus.table.number}
+                  </span>
+                  <div className="flex items-center space-x-1">
+                    {getLocationIcon(tableStatus.table.location)}
+                    {tableStatus.hasActiveOrder && (
+                      <span className="text-xs">🍽️</span>
+                    )}
+                  </div>
                 </div>
-                {tableStatus.partySize && (
-                  <div className="text-xs opacity-75">
-                    {tableStatus.partySize} people
+
+                {/* Status Indicator */}
+                <div className="text-center mb-2">
+                  <div className="text-2xl">
+                    {tableStatus.status === "available" && "✅"}
+                    {tableStatus.status === "reserved" && "📅"}
+                    {tableStatus.status === "occupied" && "👥"}
+                    {tableStatus.status === "awaiting_payment" && "💳"}
+                    {tableStatus.status === "unavailable" && "❌"}
+                    {isOverdue && "⚠️"}
+                  </div>
+                </div>
+
+                {/* Waiting Time */}
+                {tableStatus.waitingTimeMinutes > 0 && (
+                  <div className="text-center">
+                    <div
+                      className={`text-xs font-medium ${
+                        isOverdue
+                          ? "text-red-700"
+                          : isWarning
+                          ? "text-yellow-700"
+                          : "text-gray-700"
+                      }`}
+                    >
+                      {formatWaitingTime(tableStatus.waitingTimeMinutes)}
+                    </div>
                   </div>
                 )}
-              </div>
-            )}
 
-            {/* Waiting Time */}
-            {tableStatus.waitingTime && tableStatus.waitingTime > 0 && (
-              <div className="text-center">
-                <div className="text-xs font-bold">
-                  {formatWaitingTime(tableStatus.waitingTime)}
+                {/* Capacity */}
+                <div className="absolute top-1 left-1">
+                  <span className="text-xs text-gray-600">
+                    {tableStatus.table.capacity}
+                  </span>
                 </div>
-              </div>
-            )}
 
-            {/* Order Amount */}
-            {tableStatus.currentOrder && (
-              <div className="text-center mt-1">
-                <div className="text-xs font-bold">
-                  €{tableStatus.currentOrder.totalAmount.toFixed(2)}
-                </div>
-              </div>
-            )}
-
-            {/* Overdue Indicator */}
-            {tableStatus.status === "overdue" && (
-              <div className="absolute top-1 right-1">
-                <AlertTriangle className="w-4 h-4 text-red-600 animate-bounce" />
-              </div>
-            )}
-          </motion.div>
-        ))}
+                {/* Revenue indicator */}
+                {tableStatus.currentRevenue > 0 && (
+                  <div className="absolute top-1 right-1">
+                    <span className="text-xs text-green-600 font-medium">
+                      €{tableStatus.currentRevenue.toFixed(0)}
+                    </span>
+                  </div>
+                )}
+              </motion.div>
+            );
+          })}
       </div>
 
       {/* Configuration Modal */}
       {showConfig && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-royal-charcoal p-6 rounded-lg border border-royal-gold/30 max-w-md w-full mx-4">
-            <h3 className="text-xl font-bold text-royal-cream mb-4">
-              Table Status Configuration
-            </h3>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">Zeitkonfiguration</h2>
+              <button
+                onClick={() => setShowConfig(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ×
+              </button>
+            </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-royal-cream/70 text-sm mb-2">
-                  Warning Time (minutes)
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Warnzeit (Minuten)
                 </label>
                 <input
                   type="number"
@@ -576,13 +800,15 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
                       warningTimeMinutes: parseInt(e.target.value),
                     }))
                   }
-                  className="w-full px-3 py-2 bg-royal-charcoal-dark border border-royal-gold/30 rounded text-royal-cream"
+                  min="1"
+                  max="180"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-royal-cream/70 text-sm mb-2">
-                  Overdue Time (minutes)
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Überfälligkeitszeit (Minuten)
                 </label>
                 <input
                   type="number"
@@ -593,13 +819,15 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
                       overdueTimeMinutes: parseInt(e.target.value),
                     }))
                   }
-                  className="w-full px-3 py-2 bg-royal-charcoal-dark border border-royal-gold/30 rounded text-royal-cream"
+                  min="1"
+                  max="300"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-royal-cream/70 text-sm mb-2">
-                  Max Service Time (minutes)
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Maximale Servicezeit (Minuten)
                 </label>
                 <input
                   type="number"
@@ -610,24 +838,26 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
                       maxServiceTimeMinutes: parseInt(e.target.value),
                     }))
                   }
-                  className="w-full px-3 py-2 bg-royal-charcoal-dark border border-royal-gold/30 rounded text-royal-cream"
+                  min="1"
+                  max="120"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-            </div>
 
-            <div className="flex space-x-3 mt-6">
-              <button
-                onClick={handleConfigUpdate}
-                className="flex-1 bg-royal-gradient-gold text-royal-charcoal py-2 px-4 rounded-lg font-semibold hover:shadow-lg transition-all duration-200"
-              >
-                Update
-              </button>
-              <button
-                onClick={() => setShowConfig(false)}
-                className="flex-1 bg-royal-charcoal-dark text-royal-cream py-2 px-4 rounded-lg border border-royal-gold/30 hover:bg-royal-charcoal transition-colors"
-              >
-                Cancel
-              </button>
+              <div className="flex space-x-3 pt-4">
+                <button
+                  onClick={handleConfigUpdate}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  Speichern
+                </button>
+                <button
+                  onClick={() => setShowConfig(false)}
+                  className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+                >
+                  Abbrechen
+                </button>
+              </div>
             </div>
           </div>
         </div>

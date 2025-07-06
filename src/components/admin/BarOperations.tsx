@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   collection,
   query,
   where,
   orderBy,
   onSnapshot,
+  getDocs,
 } from "firebase/firestore";
 import { getFirestoreDB } from "../../config/firebase";
 import { Order } from "../../types/order";
@@ -12,12 +13,30 @@ import { MenuItem } from "../../types/menu";
 import { CartItem } from "../../types/order";
 import { OrderService } from "../../services/orderService";
 import LoadingSpinner from "../common/LoadingSpinner";
+import { ErrorEmptyState, NoDataEmptyState } from "../common/EmptyState";
+import {
+  useMultipleAdminDataLoader,
+  useRealtimeAdminData,
+} from "../../hooks/useAdminDataLoader";
 import { toast } from "react-hot-toast";
-import { Clock, CheckCircle, Hash, ChefHat, Coffee, Flame } from "lucide-react";
+import {
+  Clock,
+  CheckCircle,
+  Hash,
+  ChefHat,
+  Coffee,
+  Flame,
+  RefreshCw,
+} from "lucide-react";
 import { safeToDateWithFallback } from "../../utils/dateUtils";
 
 interface OrderWithItem extends Order {
   currentItem: CartItem & MenuItem;
+}
+
+interface BarOperationsData {
+  menuItems: MenuItem[];
+  pendingOrders: Order[];
 }
 
 interface BarOperationsProps {}
@@ -25,37 +44,56 @@ interface BarOperationsProps {}
 const BarOperations: React.FC<BarOperationsProps> = () => {
   const [drinkOrders, setDrinkOrders] = useState<OrderWithItem[]>([]);
   const [shishaOrders, setShishaOrders] = useState<OrderWithItem[]>([]);
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [completingOrders, setCompletingOrders] = useState<Set<string>>(
     new Set()
   );
 
   const db = getFirestoreDB();
 
-  // Safety timeout to prevent infinite loading
+  // Use our robust data loader for initial data
+  const {
+    data: initialData,
+    loading: loadingInitial,
+    error: initialError,
+    isEmpty,
+    loadMultipleData: loadInitialData,
+    reload: reloadInitialData,
+  } = useMultipleAdminDataLoader<BarOperationsData>({
+    initialData: { menuItems: [], pendingOrders: [] },
+    onSuccess: (data) => {
+      console.log("📊 BarOperations: Initial data loaded successfully", {
+        menuItems: data.menuItems.length,
+        pendingOrders: data.pendingOrders.length,
+      });
+      processOrdersWithMenuItems(data.pendingOrders, data.menuItems);
+    },
+    onError: (error) => {
+      console.error("❌ BarOperations: Initial data loading failed:", error);
+      toast.error("Fehler beim Laden der Daten");
+    },
+    checkEmpty: (data) =>
+      data.menuItems.length === 0 && data.pendingOrders.length === 0,
+  });
+
+  // Use realtime data loader for live updates
+  const {
+    loading: loadingRealtime,
+    error: realtimeError,
+    setupRealtimeListener,
+  } = useRealtimeAdminData<Order[]>([], (data) =>
+    Array.isArray(data) ? data.length === 0 : !data
+  );
+
+  // Load initial data when component mounts
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      console.log("⚠️ Safety timeout reached, setting loading to false");
-      setLoading(false);
-    }, 10000); // 10 second timeout
+    console.log("🔄 BarOperations: Loading initial data");
 
-    return () => clearTimeout(timeout);
-  }, []);
-
-  // Load menu items
-  useEffect(() => {
-    console.log("🔄 BarOperations: Loading menu items");
-
-    const menuQuery = query(collection(db, "menuItems"));
-    const unsubscribeMenu = onSnapshot(
-      menuQuery,
-      (snapshot) => {
-        console.log("📋 Menu snapshot received:", {
-          docs: snapshot.docs.length,
-          fromCache: snapshot.metadata.fromCache,
-          hasPendingWrites: snapshot.metadata.hasPendingWrites,
-        });
+    loadInitialData({
+      // Load menu items
+      menuItems: async () => {
+        console.log("📋 Loading menu items...");
+        const menuQuery = query(collection(db, "menuItems"));
+        const snapshot = await getDocs(menuQuery);
 
         const items = snapshot.docs.map((doc) => ({
           id: doc.id,
@@ -63,47 +101,19 @@ const BarOperations: React.FC<BarOperationsProps> = () => {
         })) as MenuItem[];
 
         console.log("📋 Menu items loaded:", items.length);
-        console.log(
-          "📋 Menu items categories:",
-          items.map((item) => `${item.name} (${item.category})`)
-        );
-        setMenuItems(items);
+        return items;
       },
-      (error) => {
-        console.error("❌ Error loading menu items:", error);
-        toast.error("Fehler beim Laden der Menüdaten");
-        // Even if menu loading fails, don't block the orders loading
-        setMenuItems([]);
-      }
-    );
 
-    return () => {
-      console.log("🔄 Cleaning up menu listener");
-      unsubscribeMenu();
-    };
-  }, []);
+      // Load pending orders
+      pendingOrders: async () => {
+        console.log("📊 Loading pending orders...");
+        const ordersQuery = query(
+          collection(db, "orders"),
+          where("status", "in", ["pending", "confirmed", "preparing"]),
+          orderBy("createdAt", "asc")
+        );
 
-  // Real-time orders listener with enhanced filtering
-  useEffect(() => {
-    console.log("🔄 BarOperations: Setting up real-time orders listener");
-    console.log("📋 Menu items available:", menuItems.length);
-
-    // Listen for orders that need bar/kitchen attention
-    const ordersQuery = query(
-      collection(db, "orders"),
-      where("status", "in", ["pending", "confirmed", "preparing"]),
-      orderBy("createdAt", "asc")
-    );
-
-    const unsubscribeOrders = onSnapshot(
-      ordersQuery,
-      (snapshot) => {
-        console.log("📊 BarOperations: Real-time update received");
-        console.log("📊 Snapshot metadata:", {
-          hasPendingWrites: snapshot.metadata.hasPendingWrites,
-          isFromCache: snapshot.metadata.fromCache,
-          docs: snapshot.docs.length,
-        });
+        const snapshot = await getDocs(ordersQuery);
 
         const orders = snapshot.docs.map((doc) => {
           const data = doc.data();
@@ -115,218 +125,212 @@ const BarOperations: React.FC<BarOperationsProps> = () => {
           } as Order;
         });
 
-        console.log("📊 BarOperations: Processing orders:", orders.length);
-
-        // Separate orders by category with real-time updates
-        const drinks: OrderWithItem[] = [];
-        const shisha: OrderWithItem[] = [];
-
-        // Only process orders if we have menu items to match against
-        if (menuItems.length > 0) {
-          orders.forEach((order) => {
-            order.items.forEach((orderItem) => {
-              const menuItem = menuItems.find(
-                (item) => item.id === orderItem.menuItemId
-              );
-              if (menuItem) {
-                const orderWithMenuItem: OrderWithItem = {
-                  ...order,
-                  currentItem: {
-                    ...orderItem,
-                    ...menuItem,
-                  },
-                };
-
-                console.log(
-                  `🍽️ Processing item: ${menuItem.name} (${menuItem.category})`
-                );
-
-                if (
-                  menuItem.category === "drinks" ||
-                  menuItem.category === "beverages"
-                ) {
-                  drinks.push(orderWithMenuItem);
-                } else if (
-                  menuItem.category === "shisha" ||
-                  menuItem.category === "hookah" ||
-                  menuItem.category === "tobacco"
-                ) {
-                  shisha.push(orderWithMenuItem);
-                }
-              } else {
-                console.warn(
-                  "⚠️ Menu item not found for orderItem:",
-                  orderItem
-                );
-                console.warn(
-                  "Available menu item IDs:",
-                  menuItems.map((item) => item.id)
-                );
-                console.warn("Looking for:", orderItem.menuItemId);
-              }
-            });
-          });
-        } else {
-          console.log("⚠️ No menu items loaded yet, showing empty results");
-        }
-
-        console.log("🍹 Real-time drink orders:", drinks.length);
-        console.log("💨 Real-time shisha orders:", shisha.length);
-
-        // Update state with animation-friendly updates
-        setDrinkOrders(drinks);
-        setShishaOrders(shisha);
-        setLoading(false); // Always set loading to false, even if no menu items
-
-        // Show toast notification for new orders (only for non-cached updates)
-        if (!snapshot.metadata.fromCache) {
-          const newOrdersCount = drinks.length + shisha.length;
-          if (newOrdersCount > 0) {
-            console.log("🔔 New orders detected, showing notification");
-          }
-        }
+        console.log("📊 Orders loaded:", orders.length);
+        return orders;
       },
-      (error) => {
-        console.error("❌ BarOperations: Real-time listener error:", error);
-        setLoading(false);
-        toast.error("Fehler beim Laden der Bestellungen");
+    });
+  }, []);
+
+  // Set up realtime listener after initial data is loaded
+  useEffect(() => {
+    if (!initialData || loadingInitial) return;
+
+    console.log("🔄 BarOperations: Setting up realtime listener");
+
+    const unsubscribe = setupRealtimeListener(
+      (callback) => {
+        const ordersQuery = query(
+          collection(db, "orders"),
+          where("status", "in", ["pending", "confirmed", "preparing"]),
+          orderBy("createdAt", "asc")
+        );
+
+        return onSnapshot(
+          ordersQuery,
+          (snapshot) => {
+            console.log("📊 Realtime orders update:", {
+              docs: snapshot.docs.length,
+              fromCache: snapshot.metadata.fromCache,
+              hasPendingWrites: snapshot.metadata.hasPendingWrites,
+            });
+
+            const orders = snapshot.docs.map((doc) => {
+              const data = doc.data();
+              return {
+                id: doc.id,
+                ...data,
+                createdAt: safeToDateWithFallback(data.createdAt),
+                updatedAt: safeToDateWithFallback(data.updatedAt),
+              } as Order;
+            });
+
+            callback(orders);
+          },
+          (error) => {
+            console.error("❌ Realtime listener error:", error);
+            toast.error("Fehler bei der Echtzeitaktualisierung");
+          }
+        );
+      },
+      (orders: Order[]) => {
+        // Process orders with current menu items
+        if (initialData?.menuItems) {
+          processOrdersWithMenuItems(orders, initialData.menuItems);
+        }
+        return orders;
       }
     );
 
     return () => {
-      console.log("🔄 BarOperations: Cleaning up real-time listener");
-      unsubscribeOrders();
+      console.log("🔄 Cleaning up realtime listener");
+      unsubscribe();
     };
-  }, [menuItems]);
+  }, [initialData, loadingInitial, setupRealtimeListener]);
 
+  // Process orders with menu items to create OrderWithItem objects
+  const processOrdersWithMenuItems = useCallback(
+    (orders: Order[], menuItems: MenuItem[]) => {
+      console.log("🔄 Processing orders with menu items", {
+        orders: orders.length,
+        menuItems: menuItems.length,
+      });
+
+      const drinks: OrderWithItem[] = [];
+      const shisha: OrderWithItem[] = [];
+
+      orders.forEach((order) => {
+        order.items.forEach((orderItem) => {
+          const menuItem = menuItems.find(
+            (item) => item.id === orderItem.menuItemId
+          );
+
+          if (menuItem) {
+            const orderWithMenuItem: OrderWithItem = {
+              ...order,
+              currentItem: {
+                ...orderItem,
+                ...menuItem,
+              },
+            };
+
+            console.log(
+              `🍽️ Processing item: ${menuItem.name} (${menuItem.category})`
+            );
+
+            if (
+              menuItem.category === "drinks" ||
+              menuItem.category === "beverages"
+            ) {
+              drinks.push(orderWithMenuItem);
+            } else if (
+              menuItem.category === "shisha" ||
+              menuItem.category === "hookah" ||
+              menuItem.category === "tobacco"
+            ) {
+              shisha.push(orderWithMenuItem);
+            }
+          } else {
+            console.warn(
+              "⚠️ Menu item not found for orderItem:",
+              orderItem.menuItemId
+            );
+          }
+        });
+      });
+
+      console.log("🍹 Processed drink orders:", drinks.length);
+      console.log("💨 Processed shisha orders:", shisha.length);
+
+      setDrinkOrders(drinks);
+      setShishaOrders(shisha);
+    },
+    []
+  );
+
+  // Handle completing an order item
   const handleCompleteItem = async (orderId: string) => {
-    if (completingOrders.has(orderId)) {
-      console.log("⏳ Order already being completed:", orderId);
-      return;
-    }
+    if (completingOrders.has(orderId)) return;
+
+    setCompletingOrders((prev) => new Set(prev).add(orderId));
 
     try {
-      console.log("🔄 Starting completion process for order:", orderId);
-
-      // Add to completing set to prevent double-clicks
-      setCompletingOrders((prev) => new Set([...prev, orderId]));
-
-      // Show immediate UI feedback
-      toast.loading("Bestellung wird als fertig markiert...", {
-        id: `completing-${orderId}`,
-      });
-
-      // Update order status using the service
       await OrderService.updateOrderStatus(orderId, "ready");
+      toast.success("Bestellung abgeschlossen");
 
-      console.log("✅ Order marked as ready:", orderId);
-
-      // Success feedback
-      toast.success("Bestellung erfolgreich als fertig markiert!", {
-        id: `completing-${orderId}`,
-        duration: 3000,
-      });
-
-      // The real-time listener will automatically remove the order from the view
-      console.log("🔄 Real-time listener should now remove order from view");
+      // Reload data to ensure consistency
+      reloadInitialData();
     } catch (error) {
       console.error("❌ Error completing order:", error);
-      toast.error(
-        "Fehler beim Abschließen der Bestellung: " +
-          (error instanceof Error ? error.message : String(error)),
-        {
-          id: `completing-${orderId}`,
-          duration: 5000,
-        }
-      );
+      toast.error("Fehler beim Abschließen der Bestellung");
     } finally {
-      // Remove from completing set after a delay
-      setTimeout(() => {
-        setCompletingOrders((prev) => {
-          const newSet = new Set(prev);
-          newSet.delete(orderId);
-          return newSet;
-        });
-      }, 1000);
+      setCompletingOrders((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(orderId);
+        return newSet;
+      });
     }
   };
 
+  // Handle starting preparation
   const handleStartPreparing = async (orderId: string) => {
+    if (completingOrders.has(orderId)) return;
+
+    setCompletingOrders((prev) => new Set(prev).add(orderId));
+
     try {
-      console.log("🔄 Starting preparation for order:", orderId);
-
-      toast.loading("Bestellung wird in Vorbereitung gesetzt...", {
-        id: `preparing-${orderId}`,
-      });
-
       await OrderService.updateOrderStatus(orderId, "preparing");
-
-      toast.success("Bestellung in Vorbereitung!", {
-        id: `preparing-${orderId}`,
-        duration: 2000,
-      });
+      toast.success("Zubereitung gestartet");
     } catch (error) {
       console.error("❌ Error starting preparation:", error);
-      toast.error("Fehler beim Starten der Vorbereitung", {
-        id: `preparing-${orderId}`,
-        duration: 5000,
+      toast.error("Fehler beim Starten der Zubereitung");
+    } finally {
+      setCompletingOrders((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(orderId);
+        return newSet;
       });
     }
   };
 
+  // Utility functions for order priority and formatting
   const getOrderPriority = (createdAt: any) => {
     const now = new Date();
     const orderTime = safeToDateWithFallback(createdAt);
-    const minutesWaiting = Math.floor(
+    const diffMinutes = Math.floor(
       (now.getTime() - orderTime.getTime()) / (1000 * 60)
     );
 
-    if (minutesWaiting > 15) return "high";
-    if (minutesWaiting > 10) return "medium";
+    if (diffMinutes > 20) return "urgent";
+    if (diffMinutes > 10) return "high";
     return "normal";
   };
 
   const getPriorityStyles = (priority: string) => {
     switch (priority) {
+      case "urgent":
+        return "bg-red-100 border-red-300 text-red-800";
       case "high":
-        return {
-          border:
-            "border-l-4 border-red-500 bg-gradient-to-r from-red-50 to-white shadow-red-100",
-          badge: "bg-red-500 text-white animate-pulse",
-          icon: "text-red-500",
-        };
-      case "medium":
-        return {
-          border:
-            "border-l-4 border-yellow-500 bg-gradient-to-r from-yellow-50 to-white shadow-yellow-100",
-          badge: "bg-yellow-500 text-white",
-          icon: "text-yellow-500",
-        };
+        return "bg-orange-100 border-orange-300 text-orange-800";
       default:
-        return {
-          border:
-            "border-l-4 border-green-500 bg-gradient-to-r from-green-50 to-white shadow-green-100",
-          badge: "bg-green-500 text-white",
-          icon: "text-green-500",
-        };
+        return "bg-blue-100 border-blue-300 text-blue-800";
     }
   };
 
   const formatWaitTime = (createdAt: any) => {
     const now = new Date();
     const orderTime = safeToDateWithFallback(createdAt);
-    const minutesWaiting = Math.floor(
+    const diffMinutes = Math.floor(
       (now.getTime() - orderTime.getTime()) / (1000 * 60)
     );
-    return `${minutesWaiting}min`;
+    return `${diffMinutes} min`;
   };
 
   const getPriorityText = (priority: string) => {
     switch (priority) {
-      case "high":
+      case "urgent":
         return "DRINGEND";
-      case "medium":
-        return "MITTEL";
+      case "high":
+        return "HOCH";
       default:
         return "NORMAL";
     }
@@ -335,11 +339,11 @@ const BarOperations: React.FC<BarOperationsProps> = () => {
   const getStatusText = (status: string) => {
     switch (status) {
       case "pending":
-        return "Neu";
+        return "Wartend";
       case "confirmed":
         return "Bestätigt";
       case "preparing":
-        return "In Vorbereitung";
+        return "In Zubereitung";
       default:
         return status;
     }
@@ -348,232 +352,243 @@ const BarOperations: React.FC<BarOperationsProps> = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "pending":
-        return "bg-blue-100 text-blue-800";
-      case "confirmed":
-        return "bg-green-100 text-green-800";
-      case "preparing":
         return "bg-yellow-100 text-yellow-800";
+      case "confirmed":
+        return "bg-blue-100 text-blue-800";
+      case "preparing":
+        return "bg-purple-100 text-purple-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
   };
 
+  // Order card component
   const OrderCard = ({ order }: { order: OrderWithItem }) => {
     const priority = getOrderPriority(order.createdAt);
-    const styles = getPriorityStyles(priority);
     const isCompleting = completingOrders.has(order.id);
 
     return (
       <div
-        className={`${
-          styles.border
-        } rounded-xl p-5 mb-4 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 ${
-          isCompleting ? "opacity-50 pointer-events-none" : ""
-        }`}
+        className={`
+        p-4 rounded-lg border-2 mb-4 transition-all duration-300
+        ${getPriorityStyles(priority)}
+        ${isCompleting ? "opacity-50 pointer-events-none" : ""}
+      `}
       >
-        {/* Header */}
-        <div className="flex justify-between items-start mb-4">
-          <div className="flex items-center space-x-3">
-            <div className="bg-white rounded-full p-2 shadow-sm">
-              <Hash className="w-5 h-5 text-gray-600" />
-            </div>
-            <div>
-              <h3 className="font-bold text-xl text-gray-800">
-                Tisch {order.tableNumber || order.id?.slice(-4)}
-              </h3>
-              <div className="flex items-center space-x-2 text-sm text-gray-500">
-                <Clock className="w-4 h-4" />
-                <span>{formatWaitTime(order.createdAt)} Wartezeit</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Priority Badge */}
+        <div className="flex justify-between items-start mb-3">
           <div className="flex items-center space-x-2">
+            <Hash className="w-4 h-4" />
+            <span className="font-semibold">#{order.id}</span>
             <span
-              className={`px-2 py-1 text-xs font-bold rounded-full ${getStatusColor(
+              className={`px-2 py-1 rounded text-xs ${getStatusColor(
                 order.status
               )}`}
             >
               {getStatusText(order.status)}
             </span>
-            <span
-              className={`px-2 py-1 text-xs font-bold rounded-full ${styles.badge}`}
-            >
-              {getPriorityText(priority)}
-            </span>
+          </div>
+          <div className="flex items-center space-x-2 text-sm">
+            <Clock className="w-4 h-4" />
+            <span>{formatWaitTime(order.createdAt)}</span>
+            <span className="font-medium">{getPriorityText(priority)}</span>
           </div>
         </div>
 
-        {/* Order Item */}
-        <div className="bg-white rounded-lg p-4 mb-4 shadow-sm">
-          <div className="flex justify-between items-start">
-            <div className="flex-1">
-              <h4 className="font-semibold text-lg text-gray-800 mb-1">
-                {order.currentItem.name}
-              </h4>
-              <p className="text-sm text-gray-600 mb-2">
-                Menge: {order.currentItem.quantity}x
-              </p>
-              {order.currentItem.specialInstructions && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-2">
-                  <p className="text-sm text-yellow-800">
-                    <strong>Spezielle Anweisungen:</strong>{" "}
-                    {order.currentItem.specialInstructions}
-                  </p>
-                </div>
-              )}
-            </div>
-            <div className="text-right">
-              <p className="text-lg font-bold text-gray-900">
-                €
-                {(order.currentItem.price * order.currentItem.quantity).toFixed(
-                  2
-                )}
-              </p>
-            </div>
+        <div className="mb-3">
+          <div className="flex items-center space-x-2 mb-1">
+            {order.currentItem.category === "drinks" ? (
+              <Coffee className="w-5 h-5 text-blue-600" />
+            ) : (
+              <Flame className="w-5 h-5 text-orange-600" />
+            )}
+            <span className="font-medium">{order.currentItem.name}</span>
           </div>
+          <p className="text-sm text-gray-600 ml-7">
+            Menge: {order.currentItem.quantity}
+          </p>
+          {order.currentItem.specialInstructions && (
+            <p className="text-sm text-gray-600 ml-7 mt-1">
+              Notizen: {order.currentItem.specialInstructions}
+            </p>
+          )}
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex space-x-3">
+        <div className="flex space-x-2">
           {order.status === "pending" && (
             <button
               onClick={() => handleStartPreparing(order.id)}
-              className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center space-x-2"
+              disabled={isCompleting}
+              className="flex-1 bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <ChefHat className="w-5 h-5" />
-              <span>Vorbereitung starten</span>
+              {isCompleting ? (
+                <div className="flex items-center justify-center">
+                  <RefreshCw className="w-4 h-4 animate-spin mr-1" />
+                  Wird gestartet...
+                </div>
+              ) : (
+                <>
+                  <ChefHat className="w-4 h-4 mr-1 inline" />
+                  Zubereitung starten
+                </>
+              )}
             </button>
           )}
 
-          <button
-            onClick={() => handleCompleteItem(order.id)}
-            disabled={isCompleting}
-            className={`flex-1 ${
-              isCompleting
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-green-500 hover:bg-green-600"
-            } text-white px-4 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center space-x-2`}
-          >
-            <CheckCircle className="w-5 h-5" />
-            <span>{isCompleting ? "Wird abgeschlossen..." : "Fertig"}</span>
-          </button>
+          {(order.status === "confirmed" || order.status === "preparing") && (
+            <button
+              onClick={() => handleCompleteItem(order.id)}
+              disabled={isCompleting}
+              className="flex-1 bg-green-600 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isCompleting ? (
+                <div className="flex items-center justify-center">
+                  <RefreshCw className="w-4 h-4 animate-spin mr-1" />
+                  Wird abgeschlossen...
+                </div>
+              ) : (
+                <>
+                  <CheckCircle className="w-4 h-4 mr-1 inline" />
+                  Abschließen
+                </>
+              )}
+            </button>
+          )}
+        </div>
+
+        <div className="mt-3 text-xs text-gray-500">
+          <p>Tisch: {order.tableNumber || "N/A"}</p>
+          <p>Kunde: {order.customerName || "N/A"}</p>
+          <p>
+            Erstellt: {safeToDateWithFallback(order.createdAt).toLocaleString()}
+          </p>
         </div>
       </div>
     );
   };
 
-  if (loading) {
+  // Handle loading states
+  if (loadingInitial) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
-        <LoadingSpinner size="lg" />
-        <div className="text-center space-y-2">
-          <p className="text-gray-600">Lade Bestellungen...</p>
-          <div className="text-sm text-gray-500 space-y-1">
-            <p>📋 Menüelemente: {menuItems.length} geladen</p>
-            <p>🍹 Getränke: {drinkOrders.length}</p>
-            <p>💨 Shisha: {shishaOrders.length}</p>
-          </div>
-          <div className="mt-4 p-3 bg-blue-50 rounded-lg text-xs text-blue-700">
-            <p>
-              Debug: Falls das Laden hängt, prüfen Sie die Konsole für Fehler
-            </p>
-            <p>Firestore-Verbindung wird getestet...</p>
-          </div>
+      <div className="p-6">
+        <div className="flex items-center justify-center space-x-2 mb-6">
+          <RefreshCw className="w-5 h-5 animate-spin" />
+          <span>Laden der Bardaten...</span>
         </div>
+        <LoadingSpinner />
       </div>
     );
   }
 
+  // Handle error states
+  if (initialError) {
+    return (
+      <div className="p-6">
+        <ErrorEmptyState
+          title="Fehler beim Laden der Daten"
+          description={initialError}
+          onRetry={reloadInitialData}
+          retrying={loadingInitial}
+        />
+      </div>
+    );
+  }
+
+  // Handle empty states
+  if (isEmpty) {
+    return (
+      <div className="p-6">
+        <NoDataEmptyState
+          title="Keine Daten verfügbar"
+          description="Es sind keine Menüdaten oder Bestellungen vorhanden."
+          onRefresh={reloadInitialData}
+          refreshing={loadingInitial}
+        />
+      </div>
+    );
+  }
+
+  const totalOrders = drinkOrders.length + shishaOrders.length;
+
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Bar Operations
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">
+          Barbereich ({totalOrders} Bestellungen)
         </h1>
-        <p className="text-gray-600">
-          Live-Übersicht aller ausstehenden Bestellungen • Aktualisiert sich
-          automatisch
-        </p>
-        <div className="mt-4 flex items-center space-x-4 text-sm text-gray-500">
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-            <span>Live-Updates aktiv</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-            <span>
-              {drinkOrders.length + shishaOrders.length} aktive Bestellungen
-            </span>
-          </div>
+        <div className="flex items-center space-x-4">
+          {loadingRealtime && (
+            <div className="flex items-center space-x-2 text-blue-600">
+              <RefreshCw className="w-4 h-4 animate-spin" />
+              <span className="text-sm">Aktualisierung...</span>
+            </div>
+          )}
+          <button
+            onClick={reloadInitialData}
+            disabled={loadingInitial}
+            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+          >
+            <RefreshCw
+              className={`w-4 h-4 ${loadingInitial ? "animate-spin" : ""}`}
+            />
+            <span>Aktualisieren</span>
+          </button>
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-8">
-        {/* Drinks Section */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex items-center space-x-3 mb-6">
-            <div className="bg-blue-100 p-3 rounded-full">
-              <Coffee className="w-6 h-6 text-blue-600" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">
-                Getränke ({drinkOrders.length})
-              </h2>
-              <p className="text-sm text-gray-600">
-                Ausstehende Getränkebestellungen
-              </p>
-            </div>
+      {realtimeError && (
+        <div className="mb-4 p-4 bg-orange-50 border border-orange-200 rounded-md">
+          <div className="flex items-center space-x-2">
+            <RefreshCw className="w-4 h-4 text-orange-600" />
+            <span className="text-sm text-orange-800">
+              Echtzeitaktualisierung unterbrochen: {realtimeError}
+            </span>
           </div>
+        </div>
+      )}
 
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Drinks Section */}
+        <div>
+          <h2 className="text-xl font-semibold mb-4 flex items-center">
+            <Coffee className="w-6 h-6 mr-2 text-blue-600" />
+            Getränke ({drinkOrders.length})
+          </h2>
           <div className="space-y-4">
-            {drinkOrders.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <Coffee className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                <p>Keine ausstehenden Getränkebestellungen</p>
-              </div>
-            ) : (
+            {drinkOrders.length > 0 ? (
               drinkOrders.map((order) => (
                 <OrderCard
-                  key={`${order.id}-${order.currentItem.id}`}
+                  key={`${order.id}-${order.currentItem.menuItemId}`}
                   order={order}
                 />
               ))
+            ) : (
+              <NoDataEmptyState
+                title="Keine Getränkebestellungen"
+                description="Derzeit gibt es keine offenen Getränkebestellungen."
+              />
             )}
           </div>
         </div>
 
         {/* Shisha Section */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex items-center space-x-3 mb-6">
-            <div className="bg-purple-100 p-3 rounded-full">
-              <Flame className="w-6 h-6 text-purple-600" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">
-                Shisha ({shishaOrders.length})
-              </h2>
-              <p className="text-sm text-gray-600">
-                Ausstehende Shisha-Bestellungen
-              </p>
-            </div>
-          </div>
-
+        <div>
+          <h2 className="text-xl font-semibold mb-4 flex items-center">
+            <Flame className="w-6 h-6 mr-2 text-orange-600" />
+            Shisha ({shishaOrders.length})
+          </h2>
           <div className="space-y-4">
-            {shishaOrders.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <Flame className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                <p>Keine ausstehenden Shisha-Bestellungen</p>
-              </div>
-            ) : (
+            {shishaOrders.length > 0 ? (
               shishaOrders.map((order) => (
                 <OrderCard
-                  key={`${order.id}-${order.currentItem.id}`}
+                  key={`${order.id}-${order.currentItem.menuItemId}`}
                   order={order}
                 />
               ))
+            ) : (
+              <NoDataEmptyState
+                title="Keine Shisha-Bestellungen"
+                description="Derzeit gibt es keine offenen Shisha-Bestellungen."
+              />
             )}
           </div>
         </div>

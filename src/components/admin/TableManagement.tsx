@@ -11,6 +11,26 @@ import {
 import { getFirestoreDB } from "../../config/firebase";
 import { Table } from "../../types/reservation";
 import { ReservationService } from "../../services/reservationService";
+import { useAdminDataLoader } from "../../hooks/useAdminDataLoader";
+import { retryFirebaseOperation } from "../../utils/retryOperation";
+import {
+  ErrorEmptyState,
+  NoDataEmptyState,
+  CreateEmptyState,
+} from "../common/EmptyState";
+import { toast } from "react-hot-toast";
+import {
+  RefreshCw,
+  Plus,
+  Edit,
+  Trash2,
+  ToggleLeft,
+  ToggleRight,
+  Home,
+  TreePine,
+  Crown,
+  MapPin,
+} from "lucide-react";
 
 interface TableFormData {
   number: number;
@@ -21,12 +41,10 @@ interface TableFormData {
 }
 
 export const TableManagement: React.FC = () => {
-  const [tables, setTables] = useState<Table[]>([]);
-  // const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingTable, setEditingTable] = useState<Table | null>(null);
+  const [savingTable, setSavingTable] = useState(false);
+  const [updatingTable, setUpdatingTable] = useState<string | null>(null);
   const [formData, setFormData] = useState<TableFormData>({
     number: 1,
     capacity: 2,
@@ -44,45 +62,92 @@ export const TableManagement: React.FC = () => {
   ];
 
   const locationOptions = [
-    { value: "indoor", label: "Innenbereich", icon: "🏠" },
-    { value: "outdoor", label: "Außenbereich", icon: "🌿" },
-    { value: "vip", label: "VIP Bereich", icon: "👑" },
+    {
+      value: "indoor",
+      label: "Innenbereich",
+      icon: <Home className="w-4 h-4" />,
+    },
+    {
+      value: "outdoor",
+      label: "Außenbereich",
+      icon: <TreePine className="w-4 h-4" />,
+    },
+    { value: "vip", label: "VIP Bereich", icon: <Crown className="w-4 h-4" /> },
   ];
 
+  // Use our robust data loader
+  const {
+    data: tables,
+    loading,
+    error,
+    isEmpty,
+    loadData,
+    reload,
+    setError,
+    clearError,
+  } = useAdminDataLoader<Table[]>({
+    initialData: [],
+    onSuccess: (data) => {
+      console.log(
+        "📊 TableManagement: Tables loaded successfully:",
+        data.length
+      );
+      toast.success(`${data.length} Tische geladen`);
+    },
+    onError: (error) => {
+      console.error("❌ TableManagement: Failed to load tables:", error);
+      toast.error("Fehler beim Laden der Tische");
+    },
+    checkEmpty: (data) => data.length === 0,
+  });
+
+  // Load tables when component mounts
   useEffect(() => {
-    loadData();
+    console.log("🔄 TableManagement: Loading tables");
+    loadData(async () => {
+      return await retryFirebaseOperation(
+        () => ReservationService.getTables(),
+        3
+      );
+    });
   }, []);
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const [tablesData] = await Promise.all([
-        ReservationService.getTables(),
-        // ReservationService.getTimeSlots(),
-      ]);
-      setTables(tablesData);
-      // setTimeSlots(timeSlotsData);
-    } catch (err) {
-      setError("Failed to load data");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Handle table status toggle with retry logic
   const handleToggleActive = async (table: Table) => {
+    if (updatingTable === table.id) return;
+
+    setUpdatingTable(table.id);
+    clearError();
+
     try {
       const db = getFirestoreDB();
-      await updateDoc(doc(db, "tables", table.id), {
-        isActive: !table.isActive,
-      });
-      await loadData();
+
+      await retryFirebaseOperation(async () => {
+        await updateDoc(doc(db, "tables", table.id), {
+          isActive: !table.isActive,
+        });
+      }, 3);
+
+      toast.success(
+        `Tisch ${table.number} ${table.isActive ? "deaktiviert" : "aktiviert"}`
+      );
+
+      // Reload data to ensure consistency
+      await reload();
     } catch (err) {
-      console.error("Error updating table:", err);
-      setError("Failed to update table status");
+      console.error("❌ Error updating table:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Unbekannter Fehler";
+      setError(
+        `Fehler beim Aktualisieren von Tisch ${table.number}: ${errorMessage}`
+      );
+      toast.error(`Fehler beim Aktualisieren von Tisch ${table.number}`);
+    } finally {
+      setUpdatingTable(null);
     }
   };
 
+  // Handle table editing
   const handleEditTable = (table: Table) => {
     setEditingTable(table);
     setFormData({
@@ -95,23 +160,52 @@ export const TableManagement: React.FC = () => {
     setShowAddForm(true);
   };
 
+  // Handle table deletion with retry logic
   const handleDeleteTable = async (table: Table) => {
+    if (updatingTable === table.id) return;
+
     if (
-      window.confirm(`Are you sure you want to delete Table ${table.number}?`)
+      !window.confirm(`Möchten Sie Tisch ${table.number} wirklich löschen?`)
     ) {
-      try {
-        const db = getFirestoreDB();
+      return;
+    }
+
+    setUpdatingTable(table.id);
+    clearError();
+
+    try {
+      const db = getFirestoreDB();
+
+      await retryFirebaseOperation(async () => {
         await deleteDoc(doc(db, "tables", table.id));
-        await loadData();
-      } catch (err) {
-        console.error("Error deleting table:", err);
-        setError("Failed to delete table");
-      }
+      }, 3);
+
+      toast.success(`Tisch ${table.number} gelöscht`);
+
+      // Reload data to ensure consistency
+      await reload();
+    } catch (err) {
+      console.error("❌ Error deleting table:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Unbekannter Fehler";
+      setError(
+        `Fehler beim Löschen von Tisch ${table.number}: ${errorMessage}`
+      );
+      toast.error(`Fehler beim Löschen von Tisch ${table.number}`);
+    } finally {
+      setUpdatingTable(null);
     }
   };
 
+  // Handle table save with retry logic
   const handleSaveTable = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (savingTable) return;
+
+    setSavingTable(true);
+    clearError();
+
     try {
       const db = getFirestoreDB();
 
@@ -120,14 +214,20 @@ export const TableManagement: React.FC = () => {
         isActive: true,
       };
 
-      if (editingTable) {
-        // Update existing table
-        await updateDoc(doc(db, "tables", editingTable.id), tableData);
-      } else {
-        // Add new table
-        await addDoc(collection(db, "tables"), tableData);
-      }
+      await retryFirebaseOperation(async () => {
+        if (editingTable) {
+          // Update existing table
+          await updateDoc(doc(db, "tables", editingTable.id), tableData);
+        } else {
+          // Add new table
+          await addDoc(collection(db, "tables"), tableData);
+        }
+      }, 3);
 
+      const action = editingTable ? "aktualisiert" : "erstellt";
+      toast.success(`Tisch ${formData.number} ${action}`);
+
+      // Reset form
       setShowAddForm(false);
       setEditingTable(null);
       setFormData({
@@ -137,21 +237,36 @@ export const TableManagement: React.FC = () => {
         amenities: ["smoking_area"],
         priceMultiplier: 1.0,
       });
-      await loadData();
+
+      // Reload data to ensure consistency
+      await reload();
     } catch (err) {
-      console.error("Error saving table:", err);
-      setError("Failed to save table");
+      console.error("❌ Error saving table:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Unbekannter Fehler";
+      setError(
+        `Fehler beim Speichern von Tisch ${formData.number}: ${errorMessage}`
+      );
+      toast.error(`Fehler beim Speichern von Tisch ${formData.number}`);
+    } finally {
+      setSavingTable(false);
     }
   };
 
+  // Handle cleanup and reset with retry logic
   const handleCleanupAndReset = async () => {
     if (
-      window.confirm(
-        "This will DELETE ALL TABLES and recreate the standard 30-table layout. This action cannot be undone. Continue?"
+      !window.confirm(
+        "Dies wird ALLE TISCHE LÖSCHEN und das Standard 30-Tische Layout wiederherstellen. Diese Aktion kann nicht rückgängig gemacht werden. Fortfahren?"
       )
     ) {
-      try {
-        setLoading(true);
+      return;
+    }
+
+    clearError();
+
+    try {
+      await loadData(async () => {
         const db = getFirestoreDB();
 
         // Delete all existing tables
@@ -173,170 +288,260 @@ export const TableManagement: React.FC = () => {
         await ReservationService.initializeSampleTimeSlots();
         console.log("Time slots initialized");
 
-        await loadData();
-        setError(null);
-      } catch (err) {
-        console.error("Error during cleanup and reset:", err);
-        setError("Failed to cleanup and reset tables");
-      } finally {
-        setLoading(false);
-      }
+        // Return the new tables
+        return await ReservationService.getTables();
+      });
+
+      toast.success("Tische erfolgreich zurückgesetzt");
+    } catch (err) {
+      console.error("❌ Error during cleanup and reset:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Unbekannter Fehler";
+      setError(`Fehler beim Zurücksetzen der Tische: ${errorMessage}`);
+      toast.error("Fehler beim Zurücksetzen der Tische");
     }
   };
 
+  // Handle table initialization
   const handleInitializeTables = async () => {
     if (
-      window.confirm("This will create the standard 30-table layout. Continue?")
+      !window.confirm(
+        "Dies wird das Standard 30-Tische Layout erstellen. Fortfahren?"
+      )
     ) {
-      try {
+      return;
+    }
+
+    clearError();
+
+    try {
+      await loadData(async () => {
         await ReservationService.initializeSampleTables();
         await ReservationService.initializeSampleTimeSlots();
-        await loadData();
-      } catch (err) {
-        console.error("Error initializing tables:", err);
-        setError("Failed to initialize tables");
-      }
+        return await ReservationService.getTables();
+      });
+
+      toast.success("Tische erfolgreich initialisiert");
+    } catch (err) {
+      console.error("❌ Error initializing tables:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Unbekannter Fehler";
+      setError(`Fehler beim Initialisieren der Tische: ${errorMessage}`);
+      toast.error("Fehler beim Initialisieren der Tische");
     }
   };
 
   const handleToggleAmenity = (amenity: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      amenities: prev.amenities.includes(amenity)
-        ? prev.amenities.filter((a) => a !== amenity)
-        : [...prev.amenities, amenity],
-    }));
+    const newAmenities = formData.amenities.includes(amenity)
+      ? formData.amenities.filter((a) => a !== amenity)
+      : [...formData.amenities, amenity];
+
+    setFormData({ ...formData, amenities: newAmenities });
   };
 
   const getLocationIcon = (location: string) => {
-    const option = locationOptions.find((opt) => opt.value === location);
-    return option?.icon || "📍";
+    switch (location) {
+      case "indoor":
+        return <Home className="w-4 h-4" />;
+      case "outdoor":
+        return <TreePine className="w-4 h-4" />;
+      case "vip":
+        return <Crown className="w-4 h-4" />;
+      default:
+        return <MapPin className="w-4 h-4" />;
+    }
   };
 
   const getLocationLabel = (location: string) => {
     const option = locationOptions.find((opt) => opt.value === location);
-    return option?.label || location;
+    return option ? option.label : location;
   };
 
+  // Handle loading state
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+      <div className="p-6">
+        <div className="flex items-center justify-center space-x-2 mb-6">
+          <RefreshCw className="w-5 h-5 animate-spin" />
+          <span>Laden der Tische...</span>
+        </div>
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="space-y-3">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-16 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle error state
+  if (error) {
+    return (
+      <div className="p-6">
+        <ErrorEmptyState
+          title="Fehler beim Laden der Tische"
+          description={error}
+          onRetry={reload}
+          retrying={loading}
+        />
+      </div>
+    );
+  }
+
+  // Handle empty state
+  if (isEmpty) {
+    return (
+      <div className="p-6">
+        <CreateEmptyState
+          title="Keine Tische vorhanden"
+          description="Erstellen Sie Ihre ersten Tische, um mit der Reservierungsverwaltung zu beginnen."
+          onAdd={handleInitializeTables}
+          addLabel="Standard-Tische erstellen"
+        />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900">Table Management</h2>
-        <div className="flex flex-wrap gap-2">
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">
+          Tischverwaltung ({tables?.length || 0} Tische)
+        </h1>
+        <div className="flex items-center space-x-3">
           <button
-            onClick={() => setShowAddForm(true)}
-            className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+            onClick={reload}
+            disabled={loading}
+            className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 disabled:opacity-50"
           >
-            Add Table
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            <span>Aktualisieren</span>
           </button>
           <button
-            onClick={handleInitializeTables}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+            onClick={() => setShowAddForm(true)}
+            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
-            Initialize Layout
+            <Plus className="w-4 h-4" />
+            <span>Tisch hinzufügen</span>
           </button>
           <button
             onClick={handleCleanupAndReset}
-            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+            disabled={loading}
+            className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
           >
-            🗑️ Cleanup & Reset
+            <RefreshCw className="w-4 h-4" />
+            <span>Zurücksetzen</span>
           </button>
         </div>
       </div>
 
+      {/* Error Message */}
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-          {error}
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
+          <div className="flex items-center justify-between">
+            <span className="text-red-800">{error}</span>
+            <button
+              onClick={clearError}
+              className="text-red-600 hover:text-red-800"
+            >
+              ×
+            </button>
+          </div>
         </div>
       )}
 
       {/* Tables Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {tables.map((table) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        {tables?.map((table) => (
           <div
             key={table.id}
-            className={`border rounded-lg p-4 transition-all duration-200 ${
+            className={`p-4 rounded-lg border-2 transition-all ${
               table.isActive
-                ? "border-green-300 bg-green-50"
-                : "border-red-300 bg-red-50"
+                ? "border-green-200 bg-green-50"
+                : "border-gray-200 bg-gray-50"
             }`}
           >
-            <div className="flex justify-between items-start mb-3">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Table {table.number}
-                </h3>
-                <p className="text-sm text-gray-600">
-                  {getLocationIcon(table.location)}{" "}
-                  {getLocationLabel(table.location)}
-                </p>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-2">
+                <span className="text-lg font-semibold">
+                  Tisch {table.number}
+                </span>
+                <span
+                  className={`px-2 py-1 text-xs rounded ${
+                    table.isActive
+                      ? "bg-green-100 text-green-800"
+                      : "bg-gray-100 text-gray-800"
+                  }`}
+                >
+                  {table.isActive ? "Aktiv" : "Inaktiv"}
+                </span>
               </div>
-              <div className="flex space-x-1">
+              <div className="flex items-center space-x-1">
                 <button
                   onClick={() => handleToggleActive(table)}
-                  className={`p-1 rounded ${
-                    table.isActive
-                      ? "text-green-600 hover:bg-green-100"
-                      : "text-red-600 hover:bg-red-100"
+                  disabled={updatingTable === table.id}
+                  className={`p-1 rounded transition-colors ${
+                    updatingTable === table.id
+                      ? "opacity-50 cursor-not-allowed"
+                      : "hover:bg-gray-200"
                   }`}
-                  title={table.isActive ? "Deactivate" : "Activate"}
                 >
-                  {table.isActive ? "✅" : "❌"}
+                  {updatingTable === table.id ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : table.isActive ? (
+                    <ToggleRight className="w-4 h-4 text-green-600" />
+                  ) : (
+                    <ToggleLeft className="w-4 h-4 text-gray-400" />
+                  )}
                 </button>
                 <button
                   onClick={() => handleEditTable(table)}
-                  className="p-1 text-blue-600 hover:bg-blue-100 rounded"
-                  title="Edit"
+                  disabled={updatingTable === table.id}
+                  className="p-1 rounded hover:bg-gray-200 disabled:opacity-50"
                 >
-                  ✏️
+                  <Edit className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => handleDeleteTable(table)}
-                  className="p-1 text-red-600 hover:bg-red-100 rounded"
-                  title="Delete"
+                  disabled={updatingTable === table.id}
+                  className="p-1 rounded hover:bg-red-200 disabled:opacity-50"
                 >
-                  🗑️
+                  <Trash2 className="w-4 h-4 text-red-600" />
                 </button>
               </div>
             </div>
 
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Capacity:</span>
-                <span className="font-medium">{table.capacity} people</span>
+              <div className="flex items-center space-x-2">
+                <span className="text-gray-600">Kapazität:</span>
+                <span className="font-medium">{table.capacity} Personen</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Price Multiplier:</span>
+              <div className="flex items-center space-x-2">
+                <span className="text-gray-600">Bereich:</span>
+                <div className="flex items-center space-x-1">
+                  {getLocationIcon(table.location)}
+                  <span className="font-medium">
+                    {getLocationLabel(table.location)}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className="text-gray-600">Preismultiplikator:</span>
                 <span className="font-medium">{table.priceMultiplier}x</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Status:</span>
-                <span
-                  className={`font-medium ${
-                    table.isActive ? "text-green-600" : "text-red-600"
-                  }`}
-                >
-                  {table.isActive ? "Active" : "Inactive"}
-                </span>
-              </div>
               {table.amenities.length > 0 && (
-                <div>
-                  <span className="text-gray-600">Amenities:</span>
-                  <div className="flex flex-wrap gap-1 mt-1">
+                <div className="flex items-center space-x-2">
+                  <span className="text-gray-600">Ausstattung:</span>
+                  <div className="flex flex-wrap gap-1">
                     {table.amenities.map((amenity) => (
                       <span
                         key={amenity}
-                        className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded"
+                        className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded"
                       >
-                        {amenity.replace("_", " ")}
+                        {amenity}
                       </span>
                     ))}
                   </div>
@@ -347,85 +552,84 @@ export const TableManagement: React.FC = () => {
         ))}
       </div>
 
-      {tables.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-gray-500 mb-4">No tables configured yet.</p>
-          <div className="space-x-4">
-            <button
-              onClick={handleInitializeTables}
-              className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors"
-            >
-              Initialize Standard Layout (30 Tables)
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Add/Edit Form Modal */}
       {showAddForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-semibold mb-4">
-              {editingTable ? "Edit Table" : "Add New Table"}
-            </h3>
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">
+                {editingTable
+                  ? `Tisch ${editingTable.number} bearbeiten`
+                  : "Neuen Tisch hinzufügen"}
+              </h2>
+              <button
+                onClick={() => {
+                  setShowAddForm(false);
+                  setEditingTable(null);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ×
+              </button>
+            </div>
 
             <form onSubmit={handleSaveTable} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Table Number
+                  Tischnummer
                 </label>
                 <input
                   type="number"
-                  min="1"
                   value={formData.number}
                   onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
+                    setFormData({
+                      ...formData,
                       number: parseInt(e.target.value),
-                    }))
+                    })
                   }
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  min="1"
                   required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Capacity
+                  Kapazität
                 </label>
                 <input
                   type="number"
-                  min="1"
-                  max="12"
                   value={formData.capacity}
                   onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
+                    setFormData({
+                      ...formData,
                       capacity: parseInt(e.target.value),
-                    }))
+                    })
                   }
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  min="1"
+                  max="20"
                   required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Location
+                  Bereich
                 </label>
                 <select
                   value={formData.location}
                   onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
+                    setFormData({
+                      ...formData,
                       location: e.target.value as any,
-                    }))
+                    })
                   }
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   {locationOptions.map((option) => (
                     <option key={option.value} value={option.value}>
-                      {option.icon} {option.label}
+                      {option.label}
                     </option>
                   ))}
                 </select>
@@ -433,41 +637,42 @@ export const TableManagement: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Price Multiplier
+                  Preismultiplikator
                 </label>
                 <input
                   type="number"
-                  min="0.5"
-                  max="3"
-                  step="0.1"
                   value={formData.priceMultiplier}
                   onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
+                    setFormData({
+                      ...formData,
                       priceMultiplier: parseFloat(e.target.value),
-                    }))
+                    })
                   }
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  min="0.5"
+                  max="5"
+                  step="0.1"
                   required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Amenities
+                  Ausstattung
                 </label>
-                <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
                   {amenityOptions.map((amenity) => (
-                    <label key={amenity} className="flex items-center">
+                    <label
+                      key={amenity}
+                      className="flex items-center space-x-2"
+                    >
                       <input
                         type="checkbox"
                         checked={formData.amenities.includes(amenity)}
                         onChange={() => handleToggleAmenity(amenity)}
-                        className="mr-2 text-purple-600 focus:ring-purple-500"
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
-                      <span className="text-sm text-gray-700">
-                        {amenity.replace("_", " ")}
-                      </span>
+                      <span className="text-sm">{amenity}</span>
                     </label>
                   ))}
                 </div>
@@ -476,9 +681,17 @@ export const TableManagement: React.FC = () => {
               <div className="flex space-x-3 pt-4">
                 <button
                   type="submit"
-                  className="flex-1 bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                  disabled={savingTable}
+                  className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {editingTable ? "Update" : "Add"} Table
+                  {savingTable ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Speichern...</span>
+                    </>
+                  ) : (
+                    <span>{editingTable ? "Aktualisieren" : "Hinzufügen"}</span>
+                  )}
                 </button>
                 <button
                   type="button"
@@ -486,46 +699,15 @@ export const TableManagement: React.FC = () => {
                     setShowAddForm(false);
                     setEditingTable(null);
                   }}
-                  className="flex-1 bg-gray-500 text-white py-2 rounded-lg hover:bg-gray-600 transition-colors"
+                  className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
                 >
-                  Cancel
+                  Abbrechen
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
-
-      {/* Summary */}
-      <div className="bg-gray-50 rounded-lg p-4">
-        <h3 className="font-semibold text-gray-900 mb-2">Summary</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-          <div>
-            <span className="text-gray-600">Total Tables:</span>
-            <span className="ml-2 font-medium">{tables.length}</span>
-          </div>
-          <div>
-            <span className="text-gray-600">Active:</span>
-            <span className="ml-2 font-medium text-green-600">
-              {tables.filter((t) => t.isActive).length}
-            </span>
-          </div>
-          <div>
-            <span className="text-gray-600">Inactive:</span>
-            <span className="ml-2 font-medium text-red-600">
-              {tables.filter((t) => !t.isActive).length}
-            </span>
-          </div>
-          <div>
-            <span className="text-gray-600">Total Capacity:</span>
-            <span className="ml-2 font-medium">
-              {tables
-                .filter((t) => t.isActive)
-                .reduce((sum, t) => sum + t.capacity, 0)}
-            </span>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
