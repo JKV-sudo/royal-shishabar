@@ -211,6 +211,8 @@ export class OrderService {
 
   // Update order status
   static async updateOrderStatus(id: string, status: OrderStatus): Promise<void> {
+    console.log(`📊 Updating order status:`, { orderId: id, newStatus: status });
+    
     try {
       const db = getFirestoreDB();
       const docRef = doc(db, this.collectionName, id);
@@ -222,50 +224,126 @@ export class OrderService {
       });
 
       await updateDoc(docRef, updateData);
+      console.log(`✅ Order status updated successfully: ${id} -> ${status}`);
 
       // If order is confirmed by staff, add loyalty stamps
       if (status === 'confirmed') {
+        console.log(`🎯 Order confirmed! Triggering loyalty stamp process for order: ${id}`);
         try {
           await this.addLoyaltyStampsForOrder(id);
+          console.log(`✅ Loyalty stamp process completed for order: ${id}`);
         } catch (loyaltyError) {
-          console.error('Error adding loyalty stamps:', loyaltyError);
+          console.error('❌ Error adding loyalty stamps:', loyaltyError);
+          console.error('❌ Loyalty error details:', {
+            orderId: id,
+            errorMessage: loyaltyError instanceof Error ? loyaltyError.message : String(loyaltyError),
+            errorStack: loyaltyError instanceof Error ? loyaltyError.stack : undefined
+          });
           // Don't throw here - order status update was successful
         }
+      } else {
+        console.log(`ℹ️  Order status '${status}' does not trigger loyalty stamps`);
       }
     } catch (error) {
-      console.error('Error updating order status:', error);
+      console.error('❌ Error updating order status:', error);
+      console.error('❌ Status update error details:', {
+        orderId: id,
+        status,
+        errorMessage: error instanceof Error ? error.message : String(error)
+      });
       throw error;
     }
   }
 
   // Add loyalty stamps for confirmed order
   private static async addLoyaltyStampsForOrder(orderId: string): Promise<void> {
+    console.log(`🎯 Starting loyalty stamp process for order: ${orderId}`);
+    
     try {
       const order = await this.getOrderById(orderId);
-      if (!order || !order.customerPhone || !order.customerName) {
-        console.log('Order missing customer info for loyalty stamps');
+      console.log('📋 Order details:', {
+        orderId,
+        exists: !!order,
+        customerPhone: order?.customerPhone,
+        customerName: order?.customerName,
+        itemCount: order?.items?.length || 0,
+        items: order?.items?.map(item => ({ name: item.name, category: item.category, quantity: item.quantity }))
+      });
+
+      if (!order) {
+        console.log('❌ Order not found for loyalty stamps');
+        return;
+      }
+
+      if (!order.customerPhone || !order.customerName) {
+        console.log('❌ Order missing customer info for loyalty stamps:', {
+          hasPhone: !!order.customerPhone,
+          hasName: !!order.customerName,
+          phone: order.customerPhone,
+          name: order.customerName
+        });
         return;
       }
 
       // Count shisha items in the order
       const shishaCount = LoyaltyService.countShishaItems(order.items);
+      console.log('🔢 Shisha count calculation:', {
+        totalItems: order.items.length,
+        shishaCount,
+        itemBreakdown: order.items.map(item => ({
+          name: item.name,
+          category: item.category.toLowerCase(),
+          quantity: item.quantity,
+          isShisha: item.category.toLowerCase() === 'shisha' || item.category.toLowerCase() === 'tobacco'
+        }))
+      });
+
       if (shishaCount === 0) {
-        console.log('No shisha items in order for loyalty stamps');
+        console.log('❌ No shisha items in order for loyalty stamps');
         return;
       }
 
+      console.log(`✅ Proceeding with loyalty stamp addition: ${shishaCount} shisha items found`);
+
       // Get or create loyalty card
+      console.log('🏷️ Getting or creating loyalty card for:', {
+        phone: order.customerPhone,
+        name: order.customerName
+      });
+
       const loyaltyCard = await LoyaltyService.getOrCreateLoyaltyCard(
         order.customerPhone,
         order.customerName
       );
 
+      console.log('🏷️ Loyalty card retrieved:', {
+        cardId: loyaltyCard.id,
+        currentStamps: loyaltyCard.stamps,
+        totalShishaOrders: loyaltyCard.totalShishaOrders,
+        freeShishaEarned: loyaltyCard.freeShishaEarned
+      });
+
       // Add stamps for shisha items
-      await LoyaltyService.addStamps(loyaltyCard.id, orderId, shishaCount);
+      console.log(`🎯 Adding ${shishaCount} stamps to loyalty card ${loyaltyCard.id}`);
       
-      console.log(`Added ${shishaCount} loyalty stamps for order ${orderId}`);
+      const updatedCard = await LoyaltyService.addStamps(loyaltyCard.id, orderId, shishaCount);
+      
+      console.log('🎉 Loyalty stamps added successfully!', {
+        orderId,
+        shishaCount,
+        cardId: loyaltyCard.id,
+        newStamps: updatedCard.stamps,
+        newTotalOrders: updatedCard.totalShishaOrders,
+        newFreeShishas: updatedCard.freeShishaEarned
+      });
+      
     } catch (error) {
-      console.error('Error processing loyalty stamps:', error);
+      console.error('❌ Error processing loyalty stamps:', error);
+      console.error('❌ Error details:', {
+        orderId,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined
+      });
       throw error;
     }
   }

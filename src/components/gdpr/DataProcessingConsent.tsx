@@ -294,7 +294,7 @@ export const DataProcessingConsent: React.FC<DataProcessingConsentProps> = ({
       // Additional check: verify the user is properly authenticated
       if (currentFirebaseUser) {
         try {
-          const token = await currentFirebaseUser.getIdToken();
+          await currentFirebaseUser.getIdToken();
           console.log("✅ Firebase Auth token retrieved successfully");
         } catch (tokenError) {
           console.error("❌ Failed to get Firebase Auth token:", tokenError);
