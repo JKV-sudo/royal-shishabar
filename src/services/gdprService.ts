@@ -676,36 +676,61 @@ export class GDPRService {
   // Consent Management Methods
   static async recordConsent(userId: string, purpose: ProcessingPurpose, granted: boolean, metadata?: any): Promise<void> {
     try {
+      console.log('🔒 Recording consent:', { userId, purpose, granted });
+      
       const db = getFirestoreDB();
       
-      const consentRecord: Omit<ConsentRecord, 'id'> = {
+      // Validate inputs
+      if (!userId || !purpose) {
+        throw new Error('Invalid user ID or purpose for consent recording');
+      }
+      
+      const consentRecord = {
         userId,
         purpose,
         granted,
-        timestamp: new Date(),
-        ipAddress: 'hidden', // Could be collected from request if needed
-        userAgent: navigator.userAgent,
-        metadata
+        timestamp: serverTimestamp(),
+        ipAddress: 'hidden',
+        userAgent: navigator.userAgent || 'unknown',
+        metadata: metadata || null
       };
 
-      await setDoc(doc(collection(db, this.CONSENT_RECORDS_COLLECTION)), {
-        ...consentRecord,
-        timestamp: serverTimestamp()
-      });
+      // Create document with auto-generated ID
+      const docRef = doc(collection(db, this.CONSENT_RECORDS_COLLECTION));
+      await setDoc(docRef, consentRecord);
+      
+      console.log('✅ Consent recorded successfully with ID:', docRef.id);
 
-      // Log consent action
-      await this.logAuditEvent({
-        userId,
-        action: granted ? 'consent_granted' : 'consent_denied',
-        dataCategory: 'consent',
-        details: `Consent ${granted ? 'granted' : 'denied'} for purpose: ${purpose}`,
-        resource: 'consent_record',
-        resourceId: purpose
-      });
+      // Try to log audit event, but don't fail if it doesn't work
+      try {
+        await this.logAuditEvent({
+          userId,
+          action: granted ? 'consent_granted' : 'consent_denied',
+          dataCategory: 'consent',
+          details: `Consent ${granted ? 'granted' : 'denied'} for purpose: ${purpose}`,
+          resource: 'consent_record',
+          resourceId: docRef.id
+        });
+      } catch (auditError) {
+        console.warn('⚠️ Failed to log audit event, but consent was saved:', auditError);
+        // Don't throw - audit logging failure shouldn't break consent recording
+      }
 
     } catch (error) {
-      console.error('Error recording consent:', error);
-      throw error;
+      console.error('❌ Error recording consent:', error);
+      
+      // Provide more specific error messages
+      if (error instanceof Error) {
+        if (error.message.includes('permission-denied')) {
+          throw new Error('Berechtigung verweigert. Bitte melden Sie sich erneut an.');
+        } else if (error.message.includes('network')) {
+          throw new Error('Netzwerkfehler. Bitte überprüfen Sie Ihre Internetverbindung.');
+        } else {
+          throw new Error(`Fehler beim Speichern: ${error.message}`);
+        }
+      }
+      
+      throw new Error('Unbekannter Fehler beim Speichern der Einwilligung');
     }
   }
 
@@ -824,17 +849,29 @@ export class GDPRService {
     try {
       const db = getFirestoreDB();
       
-      const auditEntry: Omit<AuditLogEntry, 'id'> = {
+      // Get IP address with timeout to avoid hanging
+      let ipAddress = 'unknown';
+      try {
+        const ipPromise = this.getClientIP();
+        const timeoutPromise = new Promise<string>((_, reject) => 
+          setTimeout(() => reject(new Error('timeout')), 2000)
+        );
+        ipAddress = await Promise.race([ipPromise, timeoutPromise]);
+      } catch (ipError) {
+        console.warn('Could not get client IP:', ipError);
+        ipAddress = 'unknown';
+      }
+      
+      const auditEntry = {
         ...event,
-        timestamp: new Date(),
-        ipAddress: await this.getClientIP(),
-        userAgent: navigator.userAgent
+        timestamp: serverTimestamp(),
+        ipAddress,
+        userAgent: navigator.userAgent || 'unknown'
       };
 
-      await setDoc(doc(collection(db, this.AUDIT_LOG_COLLECTION)), {
-        ...auditEntry,
-        timestamp: serverTimestamp()
-      });
+      const docRef = doc(collection(db, this.AUDIT_LOG_COLLECTION));
+      await setDoc(docRef, auditEntry);
+      
     } catch (error) {
       console.error('Error logging audit event:', error);
       // Don't throw - audit logging failure shouldn't break user functionality

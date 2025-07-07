@@ -86,16 +86,16 @@ const MenuForm: React.FC<MenuFormProps> = ({ item, onSave, onCancel }) => {
       const itemData = {
         name: formData.name.trim(),
         description: formData.description.trim(),
-        price: formData.price,
+        price: parseFloat(formData.price.toString()),
         category: formData.category,
-        imageUrl: formData.imageUrl || undefined,
+        imageUrl: formData.imageUrl || "",
         isAvailable: formData.isAvailable,
         isPopular: formData.isPopular,
         allergens: formData.allergens.filter((allergen) => allergen.trim()),
         ingredients: formData.ingredients.filter((ingredient) =>
           ingredient.trim()
         ),
-        preparationTime: formData.preparationTime || undefined,
+        preparationTime: formData.preparationTime || "",
       };
 
       if (item?.id) {

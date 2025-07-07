@@ -137,13 +137,27 @@ export class MenuService {
       .sort((a, b) => a.name.localeCompare(b.name));
   }
 
+  // Helper function to clean data for Firebase (removes undefined values)
+  private static cleanDataForFirebase(data: any): any {
+    const cleaned: any = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined) {
+        cleaned[key] = value;
+      }
+    }
+    return cleaned;
+  }
+
   // Create a new menu item
   static async createMenuItem(itemData: Omit<MenuItem, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
-    const docRef = await addDoc(collection(getFirestoreDB(), COLLECTION_NAME), {
+    // Clean the data to remove undefined values before saving to Firebase
+    const cleanedData = this.cleanDataForFirebase({
       ...itemData,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+    
+    const docRef = await addDoc(collection(getFirestoreDB(), COLLECTION_NAME), cleanedData);
     
     return docRef.id;
   }
@@ -154,10 +168,14 @@ export class MenuService {
     updates: Partial<Omit<MenuItem, 'id' | 'createdAt' | 'updatedAt'>>
   ): Promise<void> {
     const docRef = doc(getFirestoreDB(), COLLECTION_NAME, id);
-    await updateDoc(docRef, {
+    
+    // Clean the data to remove undefined values before updating
+    const cleanedUpdates = this.cleanDataForFirebase({
       ...updates,
       updatedAt: serverTimestamp(),
     });
+    
+    await updateDoc(docRef, cleanedUpdates);
   }
 
   // Delete a menu item
