@@ -86,8 +86,8 @@ export const LiveTableGrid: React.FC<LiveTableGridProps> = ({
 
         // CRITICAL FIX: Calculate average wait time locally
         const waitTimes = statuses
-          .filter((s) => s.waitTimeMinutes && s.waitTimeMinutes > 0)
-          .map((s) => s.waitTimeMinutes || 0);
+          .filter((s) => s.waitingTime && s.waitingTime > 0)
+          .map((s) => s.waitingTime || 0);
 
         const averageWaitTime =
           waitTimes.length > 0
