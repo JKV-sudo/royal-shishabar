@@ -161,7 +161,7 @@ const Home = () => {
               <img
                 src={HERO_VIDEOS[currentVideoIndex].fallback}
                 alt={HERO_VIDEOS[currentVideoIndex].title}
-                className="absolute top-1/2 left-1/2 w-auto min-w-full min-h-full max-w-none transform -translate-x-1/2 -translate-y-1/2 object-cover hidden"
+                className="absolute top-1/2 left-1/2 w-auto min-w-full min-h-full max-w-none transform -translate-x-1/2 -translate-y-1/2 object-cover hidden" draggable={false}
               />
             </motion.div>
           </AnimatePresence>
@@ -314,6 +314,7 @@ const Home = () => {
           >
             <div className="relative">
               <img
+                draggable={false}
                 src={RoyalShishaLogo}
                 alt="Royal Shisha Logo"
                 className="w-20 h-20 sm:w-24 sm:h-24 md:w-40 md:h-40 mx-auto rounded-full object-cover border-2 md:border-4 border-royal-gold shadow-2xl relative z-10"

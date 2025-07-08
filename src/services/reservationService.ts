@@ -273,15 +273,6 @@ export class ReservationService {
         return reservationDate >= startOfDay && reservationDate <= endOfDay;
       });
 
-      console.log(`✅ Table ${tableId} availability check:`, {
-        tableId,
-        timeSlot,
-        date: date.toDateString(),
-        totalReservations: querySnapshot.docs.length,
-        conflictingReservations: conflictingReservations.length,
-        isAvailable: conflictingReservations.length === 0
-      });
-
       return conflictingReservations.length === 0;
     } catch (error) {
       console.error('Error checking table availability:', error);
@@ -321,14 +312,11 @@ export class ReservationService {
           // Outdoor area closes at 22:00
           // Exclude if end time is after 22:00 and before 6:00 (next day)
           if (endHour > 22 || endHour < 6) {
-            console.log(`Excluding outdoor table ${table.number} - Außenbereich closes at 22:00 (slot ends at ${timeSlotEndTime})`);
             return false;
           }
         }
         return true;
       });
-
-      console.log(`Available tables after outdoor hours filter: ${filteredTables.length} (slot: ${check.timeSlot})`);
 
       // Check availability for each table
       const availableTables: AvailableTable[] = [];
@@ -577,6 +565,52 @@ export class ReservationService {
     }
   }
 
+  // Add this method to clean up duplicate time slots
+  static async cleanupDuplicateTimeSlots(): Promise<void> {
+    try {
+      const db = getFirestoreDB();
+      const q = query(collection(db, TIME_SLOTS_COLLECTION), orderBy('startTime', 'asc'));
+      const querySnapshot = await getDocs(q);
+      
+      const timeSlots = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as TimeSlot[];
+      
+      console.log('🔍 Found time slots:', timeSlots.length);
+      
+      // Find duplicates
+      const seen = new Set();
+      const duplicates: string[] = [];
+      
+      timeSlots.forEach(slot => {
+        const key = `${slot.startTime}-${slot.endTime}`;
+        if (seen.has(key)) {
+          duplicates.push(slot.id);
+        } else {
+          seen.add(key);
+        }
+      });
+      
+      if (duplicates.length > 0) {
+        console.log('🗑️ Found duplicate time slots:', duplicates);
+        
+        // Delete duplicates
+        const batch = writeBatch(db);
+        duplicates.forEach(id => {
+          batch.delete(doc(db, TIME_SLOTS_COLLECTION, id));
+        });
+        
+        await batch.commit();
+        console.log('✅ Cleaned up duplicate time slots');
+      } else {
+        console.log('✅ No duplicate time slots found');
+      }
+    } catch (error) {
+      console.error('Error cleaning up duplicate time slots:', error);
+    }
+  }
+
   // Get all tables
   static async getTables(): Promise<Table[]> {
     try {
@@ -611,8 +645,23 @@ export class ReservationService {
         index === self.findIndex(s => s.startTime === slot.startTime && s.endTime === slot.endTime)
       );
 
-      console.log(`Loaded ${timeSlots.length} time slots, ${uniqueTimeSlots.length} unique`);
-      return uniqueTimeSlots;
+      // Sort by start time with proper restaurant time handling
+      const sortedTimeSlots = uniqueTimeSlots.sort((a, b) => {
+        const [hourA, minuteA] = a.startTime.split(':').map(Number);
+        const [hourB, minuteB] = b.startTime.split(':').map(Number);
+        
+        // Convert to minutes, treating midnight hours (0-6) as later in the day
+        let timeA = hourA * 60 + minuteA;
+        let timeB = hourB * 60 + minuteB;
+        
+        // If hour is 0-6 (midnight to 6 AM), add 24 hours to make it later
+        if (hourA < 7) timeA += 24 * 60;
+        if (hourB < 7) timeB += 24 * 60;
+        
+        return timeA - timeB;
+      });
+      
+      return sortedTimeSlots;
     } catch (error) {
       console.error('Error getting time slots:', error);
       throw error;

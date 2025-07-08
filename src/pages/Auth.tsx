@@ -42,8 +42,18 @@ const Auth = () => {
     });
   };
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // CRITICAL FIX: Prevent multiple rapid submissions
+    if (isSubmitting) {
+      console.log("Preventing duplicate submission");
+      return;
+    }
+
+    setIsSubmitting(true);
 
     try {
       if (mode === "login") {
@@ -66,6 +76,8 @@ const Auth = () => {
       }
     } catch (error: any) {
       toast.error(error.message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 

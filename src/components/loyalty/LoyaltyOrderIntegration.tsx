@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Crown,
@@ -14,6 +14,7 @@ import { LoyaltyCard as LoyaltyCardType } from "../../types/loyalty";
 import { CartItem } from "../../types/order";
 import LoyaltyCard from "./LoyaltyCard";
 import LoadingSpinner from "../common/LoadingSpinner";
+import { debounce } from "lodash"; // or implement your own debounce
 
 interface LoyaltyOrderIntegrationProps {
   cartItems: CartItem[];
@@ -86,11 +87,20 @@ const LoyaltyOrderIntegration: React.FC<LoyaltyOrderIntegrationProps> = ({
   };
 
   // Load loyalty card when phone is provided
+  const debouncedLoadLoyaltyCard = useMemo(
+    () =>
+      debounce((phoneNumber: string) => {
+        if (phoneNumber && phoneNumber.trim()) {
+          loadLoyaltyCard(phoneNumber.trim());
+        }
+      }, 500), // 500ms delay
+    []
+  );
+
   useEffect(() => {
-    if (phone && phone.trim()) {
-      loadLoyaltyCard(phone.trim());
-    }
-  }, [phone]);
+    debouncedLoadLoyaltyCard(phone);
+    return () => debouncedLoadLoyaltyCard.cancel();
+  }, [phone, debouncedLoadLoyaltyCard]);
 
   const loadLoyaltyCard = async (phoneNumber: string) => {
     setLoading(true);

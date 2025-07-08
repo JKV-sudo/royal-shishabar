@@ -17,6 +17,8 @@ export class CookieAuthService {
   private static readonly COOKIE_NAME = 'royal_session';
   private static readonly SESSION_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
   private static readonly REFRESH_THRESHOLD = 24 * 60 * 60 * 1000; // Refresh if older than 1 day
+  // Add a flag to control logging
+  private static readonly DEBUG_MODE = false; // Set to false in production
 
   /**
    * Save user session to secure cookie
@@ -43,7 +45,9 @@ export class CookieAuthService {
         httpOnly: false, // Client-side access needed
       });
 
-      console.log('🍪 Session saved to cookie:', { userId: user.id, role: user.role });
+      if (this.DEBUG_MODE) {
+        console.log('🍪 Session saved to cookie:', { userId: user.id, role: user.role });
+      }
     } catch (error) {
       console.error('❌ Failed to save session to cookie:', error);
     }
@@ -56,7 +60,9 @@ export class CookieAuthService {
     try {
       const cookieData = Cookies.get(this.COOKIE_NAME);
       if (!cookieData) {
-        console.log('🍪 No session cookie found');
+        if (this.DEBUG_MODE) {
+          console.log('🍪 No session cookie found');
+        }
         return null;
       }
 
@@ -64,16 +70,20 @@ export class CookieAuthService {
 
       // Check if session is expired
       if (Date.now() > session.sessionExpiry) {
-        console.log('🍪 Session expired, clearing cookie');
+        if (this.DEBUG_MODE) {
+          console.log('🍪 Session expired, clearing cookie');
+        }
         this.clearSession();
         return null;
       }
 
-      console.log('🍪 Session loaded from cookie:', { 
-        userId: session.userId, 
-        role: session.role,
-        expiresIn: Math.round((session.sessionExpiry - Date.now()) / (1000 * 60 * 60)) + 'h'
-      });
+      if (this.DEBUG_MODE) {
+        console.log('🍪 Session loaded from cookie:', { 
+          userId: session.userId, 
+          role: session.role,
+          expiresIn: Math.round((session.sessionExpiry - Date.now()) / (1000 * 60 * 60)) + 'h'
+        });
+      }
       
       return session;
     } catch (error) {

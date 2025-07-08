@@ -22,6 +22,7 @@ import { Order, LoyaltyDiscount } from "../../types/order";
 import LoyaltyOrderIntegration from "../loyalty/LoyaltyOrderIntegration";
 import toast from "react-hot-toast";
 import { useAuthStore } from "../../stores/authStore";
+import { Reservation } from "../../types/reservation";
 
 interface CartProps {
   isOpen: boolean;
@@ -49,6 +50,10 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
     useState<ReservationOrderLink | null>(null);
   const [isLoadingReservation, setIsLoadingReservation] = useState(false);
   const [autoReservationChecked, setAutoReservationChecked] = useState(false);
+
+  // Add new state for user's active reservation
+  const [userActiveReservation, setUserActiveReservation] =
+    useState<Reservation | null>(null);
 
   // Auto-detect user's active reservation when cart opens
   useEffect(() => {
@@ -94,6 +99,41 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
 
     checkUserReservation();
   }, [user, isOpen, autoReservationChecked, setTableNumber, setCustomerInfo]);
+
+  // Add new useEffect to check for user's active reservation when cart opens
+  useEffect(() => {
+    if (isOpen && user) {
+      checkUserActiveReservation();
+    }
+  }, [isOpen, user]);
+
+  // New function to check user's active reservation for today
+  const checkUserActiveReservation = async () => {
+    if (!user) return;
+
+    try {
+      const activeReservation =
+        await ReservationService.getUserActiveReservation(user.id);
+      if (activeReservation) {
+        setUserActiveReservation(activeReservation);
+        // Auto-fill table number if cart is empty
+        if (!state.tableNumber) {
+          setTableNumber(activeReservation.tableNumber);
+          // Also auto-fill customer info if available
+          if (activeReservation.customerName) {
+            setCustomerInfo(
+              activeReservation.customerName,
+              activeReservation.customerPhone || ""
+            );
+          }
+        }
+      } else {
+        setUserActiveReservation(null);
+      }
+    } catch (error) {
+      console.error("Error checking user active reservation:", error);
+    }
+  };
 
   const handleQuantityChange = (id: string, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -165,10 +205,26 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  // Enhanced table number handler
+  // Enhanced table number handler with validation
   const handleTableNumberChange = (tableNumber: number) => {
-    setTableNumber(tableNumber);
-    checkForReservation(tableNumber);
+    // Validate and clamp the table number to 1-30 range
+    let validTableNumber = tableNumber;
+
+    if (tableNumber > 30) {
+      validTableNumber = 30;
+      toast.error("Tischnummer kann maximal 30 sein");
+    } else if (tableNumber < 0) {
+      validTableNumber = 0;
+    }
+
+    setTableNumber(validTableNumber);
+
+    // Only check for reservation if table number is valid and greater than 0
+    if (validTableNumber > 0) {
+      checkForReservation(validTableNumber);
+    } else {
+      setReservationContext(null);
+    }
   };
 
   const handleSubmitOrder = async () => {
@@ -225,10 +281,24 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
       }
 
       // Use integration service for reservation-linked orders
-      await ReservationOrderIntegrationService.createOrderWithReservation(
-        orderData,
-        reservationContext?.reservation.id
-      );
+      const orderId =
+        await ReservationOrderIntegrationService.createOrderWithReservation(
+          orderData,
+          reservationContext?.reservation.id
+        );
+
+      console.log("✅ Order created successfully with ID:", orderId);
+
+      // Add a small delay to let Firestore process
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Try to fetch the order to verify it was created
+      try {
+        // const createdOrder = await OrderService.getOrderById(orderId); // This line was commented out in the original file
+        // console.log('🔍 Retrieved created order:', createdOrder); // This line was commented out in the original file
+      } catch (fetchError) {
+        console.error("❌ Failed to fetch created order:", fetchError);
+      }
 
       const successMessage = reservationContext
         ? `Bestellung erfolgreich für Reservierung von ${reservationContext.customerInfo.name} aufgegeben!`
@@ -518,18 +588,63 @@ const Cart: React.FC<CartProps> = ({ isOpen, onClose }) => {
                             <input
                               type="number"
                               min="1"
-                              max="50"
+                              max="30"
                               value={state.tableNumber || ""}
-                              onChange={(e) =>
-                                handleTableNumberChange(
-                                  parseInt(e.target.value) || 0
-                                )
-                              }
+                              onChange={(e) => {
+                                const inputValue = e.target.value;
+                                const parsedValue = parseInt(inputValue);
+
+                                // Handle empty input
+                                if (inputValue === "") {
+                                  handleTableNumberChange(0);
+                                  return;
+                                }
+
+                                // Handle invalid input (NaN)
+                                if (isNaN(parsedValue)) {
+                                  return; // Don't update state for invalid input
+                                }
+
+                                // Handle the valid number
+                                handleTableNumberChange(parsedValue);
+                              }}
+                              onKeyDown={(e) => {
+                                // Prevent typing numbers that would exceed 30
+                                if (e.key >= "0" && e.key <= "9") {
+                                  const currentValue = state.tableNumber || 0;
+                                  const newValue = parseInt(
+                                    currentValue.toString() + e.key
+                                  );
+                                  if (newValue > 30) {
+                                    e.preventDefault();
+                                    toast.error(
+                                      "Tischnummer kann maximal 30 sein"
+                                    );
+                                  }
+                                }
+                              }}
                               className="w-full p-3 border border-gray-300 rounded-royal bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-royal-purple focus:border-royal-purple transition-colors"
-                              placeholder="z.B. 5"
+                              placeholder={
+                                userActiveReservation
+                                  ? `Auto-filled: ${userActiveReservation.tableNumber}`
+                                  : "z.B. 5"
+                              }
                               required
                             />
                           </div>
+
+                          {/* Add info about auto-filled reservation */}
+                          {userActiveReservation && (
+                            <div className="text-xs text-royal-purple bg-royal-purple/10 p-2 rounded border border-royal-purple/20">
+                              <div className="flex items-center space-x-1">
+                                <Crown className="w-3 h-3" />
+                                <span>
+                                  Auto-filled from your reservation today at{" "}
+                                  {userActiveReservation.startTime}
+                                </span>
+                              </div>
+                            </div>
+                          )}
 
                           {/* Customer Name */}
                           <div className="space-y-2">

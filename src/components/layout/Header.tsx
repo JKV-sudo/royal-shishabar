@@ -93,6 +93,7 @@ const Header: React.FC = () => {
           <div className="flex items-center justify-between h-20">
             <Link to="/" className="flex-shrink-0">
               <img
+                draggable={false}
                 className="h-10 w-10 md:h-16 md:w-16 rounded-full border border-royal-gold object-cover"
                 src={RoyalShishaLogo}
                 alt="Royal Shisha Logo"

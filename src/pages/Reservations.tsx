@@ -135,11 +135,7 @@ const Reservations: React.FC = () => {
           >
             {formatStatus(reservation.status)}
           </span>
-          {reservation.totalAmount && (
-            <div className="text-royal-gold font-semibold mt-2">
-              €{reservation.totalAmount.toFixed(2)}
-            </div>
-          )}
+          {/* Hide reservation fee display */}
         </div>
       </div>
 
@@ -269,16 +265,17 @@ const Reservations: React.FC = () => {
               </div>
             )}
 
-            {selectedReservation.totalAmount && (
-              <div className="border-t border-royal-gold/30 pt-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-royal-cream">Reservation Fee:</span>
-                  <span className="text-royal-gold font-bold text-lg">
-                    €{selectedReservation.totalAmount.toFixed(2)}
-                  </span>
+            {selectedReservation.totalAmount &&
+              selectedReservation.totalAmount > 0 && (
+                <div className="border-t border-royal-gold/30 pt-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-royal-cream">Reservation Fee:</span>
+                    <span className="text-royal-gold font-bold text-lg">
+                      €{selectedReservation.totalAmount.toFixed(2)}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
             {/* Bill view for active reservations */}
             {(selectedReservation.status === "confirmed" ||

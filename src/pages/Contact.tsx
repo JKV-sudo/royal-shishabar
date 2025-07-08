@@ -283,7 +283,7 @@ const Contact = () => {
                   id="subject"
                   name="subject"
                   required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-royal-gold focus:border-transparent transition-all duration-200"
+                  className="w-full px-4 py-3 border border-gray-300 text-royal-charcoal rounded-lg focus:ring-2 focus:ring-royal-gold focus:border-transparent transition-all duration-200"
                 >
                   <option value="">Bitte wählen Sie einen Betreff</option>
                   <option value="reservation">Reservierung</option>

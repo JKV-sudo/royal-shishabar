@@ -58,10 +58,35 @@ const ReservationForm: React.FC<ReservationFormProps> = ({
     loadTimeSlots();
   }, []);
 
+  useEffect(() => {
+    // console.log(
+    //   "🔄 timeSlots state changed:",
+    //   timeSlots.map((s) => `${s.startTime}-${s.endTime}`)
+    // );
+  }, [timeSlots]);
+
   const loadTimeSlots = async () => {
     try {
       const slots = await ReservationService.getTimeSlots();
-      setTimeSlots(slots.filter((slot) => slot.isActive));
+      const activeSlots = slots.filter((slot) => slot.isActive);
+
+      // Sort by start time with proper restaurant time handling
+      const sortedSlots = activeSlots.sort((a, b) => {
+        const [hourA, minuteA] = a.startTime.split(":").map(Number);
+        const [hourB, minuteB] = b.startTime.split(":").map(Number);
+
+        // Convert to minutes, treating midnight hours (0-6) as later in the day
+        let timeA = hourA * 60 + minuteA;
+        let timeB = hourB * 60 + minuteB;
+
+        // If hour is 0-6 (midnight to 6 AM), add 24 hours to make it later
+        if (hourA < 7) timeA += 24 * 60;
+        if (hourB < 7) timeB += 24 * 60;
+
+        return timeA - timeB;
+      });
+
+      setTimeSlots(sortedSlots);
     } catch (error) {
       console.error("Error loading time slots:", error);
       toast.error("Failed to load available time slots");
@@ -74,7 +99,7 @@ const ReservationForm: React.FC<ReservationFormProps> = ({
     if (stepNumber === 1) {
       if (!formData.date) newErrors.date = "Please select a date";
       if (!formData.timeSlot) newErrors.timeSlot = "Please select a time slot";
-      if (formData.partySize < 1 || formData.partySize > 12) {
+      if (formData.partySize < 1 || formData.partySize > 8) {
         newErrors.partySize = "Party size must be between 1 and 12";
       }
     }
@@ -321,7 +346,7 @@ const ReservationForm: React.FC<ReservationFormProps> = ({
           }
           className="w-full p-3 border border-royal-gold/30 rounded-royal bg-royal-charcoal text-royal-cream focus:outline-none focus:ring-2 focus:ring-royal-gold/50"
         >
-          {Array.from({ length: 12 }, (_, i) => i + 1).map((size) => (
+          {Array.from({ length: 8 }, (_, i) => i + 1).map((size) => (
             <option key={size} value={size}>
               {size} {size === 1 ? "Person" : "People"}
             </option>

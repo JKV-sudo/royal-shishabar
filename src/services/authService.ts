@@ -35,14 +35,34 @@ export interface UserData {
 }
 
 export class AuthService {
-  // Sign in with email and password
+  // CRITICAL FIX: Add rate limiting to prevent IP blocking
+  private static lastAuthAttempt = 0;
+  private static readonly AUTH_COOLDOWN = 3000; // 3 seconds between attempts
+
   static async signIn(email: string, password: string): Promise<FirebaseUser> {
     try {
+      // CRITICAL FIX: Rate limiting to prevent Firebase IP blocking
+      const now = Date.now();
+      const timeSinceLastAttempt = now - this.lastAuthAttempt;
+      
+      if (timeSinceLastAttempt < this.AUTH_COOLDOWN) {
+        const waitTime = this.AUTH_COOLDOWN - timeSinceLastAttempt;
+        console.log(`Rate limiting: waiting ${waitTime}ms before next auth attempt`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+      
+      this.lastAuthAttempt = Date.now();
+      
       const auth = getFirebaseAuth();
       const result = await signInWithEmailAndPassword(auth, email, password);
       return result.user;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error signing in:', error);
+      
+      if (error.code === 'auth/network-request-failed') {
+        throw new Error('Network error. Your IP may be temporarily blocked. Please try again in a few minutes or use a different network.');
+      }
+      
       throw error;
     }
   }
@@ -67,13 +87,19 @@ export class AuthService {
       });
 
       // Create user document in Firestore
-      const userData: Omit<UserData, 'id' | 'createdAt'> = {
+      const userData: any = {
         email: user.email!,
         name,
-        phone,
         role: 'user',
-        avatar: user.photoURL || undefined,
       };
+
+      // Only add optional fields if they have values
+      if (phone) {
+        userData.phone = phone;
+      }
+      if (user.photoURL) {
+        userData.avatar = user.photoURL;
+      }
 
       await setDoc(doc(db, 'users', user.uid), {
         ...userData,

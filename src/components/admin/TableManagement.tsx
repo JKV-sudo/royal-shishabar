@@ -13,10 +13,7 @@ import { Table } from "../../types/reservation";
 import { ReservationService } from "../../services/reservationService";
 import { useAdminDataLoader } from "../../hooks/useAdminDataLoader";
 import { retryFirebaseOperation } from "../../utils/retryOperation";
-import {
-  ErrorEmptyState,
-  CreateEmptyState,
-} from "../common/EmptyState";
+import { ErrorEmptyState, CreateEmptyState } from "../common/EmptyState";
 import { toast } from "react-hot-toast";
 import {
   RefreshCw,
@@ -587,6 +584,7 @@ export const TableManagement: React.FC = () => {
                     })
                   }
                   min="1"
+                  max="30"
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
@@ -606,7 +604,7 @@ export const TableManagement: React.FC = () => {
                     })
                   }
                   min="1"
-                  max="20"
+                  max="8"
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />

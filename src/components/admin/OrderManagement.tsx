@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Clock,
@@ -34,6 +34,12 @@ const OrderManagement: React.FC = () => {
   const [filters, setFilters] = useState<OrderFilters>({});
   const [showFilters, setShowFilters] = useState(false);
 
+  // CRITICAL FIX: Add state to track if component is mounted
+  const [isMounted, setIsMounted] = useState(true);
+
+  // CRITICAL FIX: Add state to prevent multiple simultaneous operations
+  const [isUpdating, setIsUpdating] = useState(false);
+
   const statusColors = {
     pending: "bg-royal-gold/20 text-royal-gold border border-royal-gold/30",
     confirmed:
@@ -55,16 +61,26 @@ const OrderManagement: React.FC = () => {
     cancelled: XCircle,
   };
 
+  // CRITICAL FIX: Set up component lifecycle
   useEffect(() => {
-    loadOrders();
-    loadStats();
-  }, [filters]);
+    setIsMounted(true);
+    return () => {
+      setIsMounted(false);
+    };
+  }, []);
 
-  const loadOrders = async () => {
+  // CRITICAL FIX: Use useCallback to prevent infinite re-renders and race conditions
+  const loadOrders = useCallback(async () => {
+    if (!isMounted) return;
+
     try {
       console.log("🔄 Loading orders with filters:", filters);
       setLoading(true);
       const ordersData = await OrderService.getOrdersWithFilters(filters);
+
+      // CRITICAL FIX: Check if component is still mounted before updating state
+      if (!isMounted) return;
+
       console.log(
         "✅ Orders loaded successfully:",
         ordersData.length,
@@ -72,54 +88,199 @@ const OrderManagement: React.FC = () => {
       );
       setOrders(ordersData);
     } catch (error) {
+      if (!isMounted) return;
+
       console.error("❌ Error loading orders:", error);
       toast.error(
         "Fehler beim Laden der Bestellungen: " +
           (error instanceof Error ? error.message : String(error))
       );
     } finally {
-      setLoading(false);
+      if (isMounted) {
+        setLoading(false);
+      }
     }
-  };
+  }, [filters, isMounted]);
 
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
+    if (!isMounted) return;
+
     try {
       const statsData = await OrderService.getOrderStats();
+
+      // CRITICAL FIX: Check if component is still mounted before updating state
+      if (!isMounted) return;
+
       setStats(statsData);
     } catch (error) {
+      if (!isMounted) return;
+
       console.error("Error loading stats:", error);
     }
-  };
+  }, [isMounted]);
 
-  const updateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
-    try {
-      await OrderService.updateOrderStatus(orderId, newStatus);
-      toast.success("Bestellstatus erfolgreich aktualisiert");
-      loadOrders();
-      loadStats();
-    } catch (error) {
-      console.error("Error updating order status:", error);
-      toast.error("Fehler beim Aktualisieren des Bestellstatus");
-    }
-  };
+  // CRITICAL FIX: Load data with proper coordination to prevent race conditions
+  useEffect(() => {
+    if (!isMounted) return;
 
-  const deleteOrder = async (orderId: string) => {
-    if (
-      !confirm("Sind Sie sicher, dass Sie diese Bestellung löschen möchten?")
-    ) {
-      return;
-    }
+    // CRITICAL FIX: Load orders and stats in parallel but coordinate the loading states
+    const loadData = async () => {
+      setLoading(true);
 
-    try {
-      await OrderService.deleteOrder(orderId);
-      toast.success("Bestellung erfolgreich gelöscht");
-      loadOrders();
-      loadStats();
-    } catch (error) {
-      console.error("Error deleting order:", error);
-      toast.error("Fehler beim Löschen der Bestellung");
-    }
-  };
+      try {
+        // Load both in parallel but handle errors separately
+        const [ordersData, statsData] = await Promise.allSettled([
+          OrderService.getOrdersWithFilters(filters),
+          OrderService.getOrderStats(),
+        ]);
+
+        // CRITICAL FIX: Check if component is still mounted before updating state
+        if (!isMounted) return;
+
+        // Handle orders result
+        if (ordersData.status === "fulfilled") {
+          console.log(
+            "✅ Orders loaded successfully:",
+            ordersData.value.length,
+            "orders"
+          );
+          setOrders(ordersData.value);
+        } else {
+          console.error("❌ Error loading orders:", ordersData.reason);
+          toast.error("Fehler beim Laden der Bestellungen");
+        }
+
+        // Handle stats result
+        if (statsData.status === "fulfilled") {
+          setStats(statsData.value);
+        } else {
+          console.error("❌ Error loading stats:", statsData.reason);
+        }
+      } catch (error) {
+        if (!isMounted) return;
+
+        console.error("❌ Error in data loading:", error);
+        toast.error("Fehler beim Laden der Daten");
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadData();
+  }, [filters, isMounted]);
+
+  // CRITICAL FIX: Prevent multiple simultaneous status updates
+  const updateOrderStatus = useCallback(
+    async (orderId: string, newStatus: OrderStatus) => {
+      if (isUpdating) {
+        toast.error(
+          "Bitte warten Sie, bis die vorherige Aktion abgeschlossen ist"
+        );
+        return;
+      }
+
+      setIsUpdating(true);
+
+      try {
+        await OrderService.updateOrderStatus(orderId, newStatus);
+
+        if (!isMounted) return;
+
+        toast.success("Bestellstatus erfolgreich aktualisiert");
+
+        // CRITICAL FIX: Reload data in parallel
+        await Promise.allSettled([loadOrders(), loadStats()]);
+      } catch (error) {
+        if (!isMounted) return;
+
+        console.error("Error updating order status:", error);
+        toast.error("Fehler beim Aktualisieren des Bestellstatus");
+      } finally {
+        if (isMounted) {
+          setIsUpdating(false);
+        }
+      }
+    },
+    [isUpdating, isMounted, loadOrders, loadStats]
+  );
+
+  // CRITICAL FIX: Prevent multiple simultaneous deletions
+  const deleteOrder = useCallback(
+    async (orderId: string) => {
+      if (isUpdating) {
+        toast.error(
+          "Bitte warten Sie, bis die vorherige Aktion abgeschlossen ist"
+        );
+        return;
+      }
+
+      if (
+        !confirm("Sind Sie sicher, dass Sie diese Bestellung löschen möchten?")
+      ) {
+        return;
+      }
+
+      setIsUpdating(true);
+
+      try {
+        await OrderService.deleteOrder(orderId);
+
+        if (!isMounted) return;
+
+        toast.success("Bestellung erfolgreich gelöscht");
+
+        // CRITICAL FIX: Reload data in parallel
+        await Promise.allSettled([loadOrders(), loadStats()]);
+      } catch (error) {
+        if (!isMounted) return;
+
+        console.error("Error deleting order:", error);
+        toast.error("Fehler beim Löschen der Bestellung");
+      } finally {
+        if (isMounted) {
+          setIsUpdating(false);
+        }
+      }
+    },
+    [isUpdating, isMounted, loadOrders, loadStats]
+  );
+
+  // CRITICAL FIX: Prevent multiple simultaneous loyalty verifications
+  const verifyLoyaltyDiscount = useCallback(
+    async (orderId: string) => {
+      if (isUpdating) {
+        toast.error(
+          "Bitte warten Sie, bis die vorherige Aktion abgeschlossen ist"
+        );
+        return;
+      }
+
+      setIsUpdating(true);
+
+      try {
+        await OrderService.verifyLoyaltyDiscount(orderId);
+
+        if (!isMounted) return;
+
+        console.log("Loyalty Rabatt bestätigt");
+
+        // CRITICAL FIX: Reload data in parallel
+        await Promise.allSettled([loadOrders(), loadStats()]);
+      } catch (error) {
+        if (!isMounted) return;
+
+        console.error("Error verifying loyalty discount:", error);
+        toast.error("Fehler beim Bestätigen des Loyalty Rabatts");
+      } finally {
+        if (isMounted) {
+          setIsUpdating(false);
+        }
+      }
+    },
+    [isUpdating, isMounted, loadOrders, loadStats]
+  );
 
   const getTotalItems = (order: Order) => {
     return order.items.reduce((total, item) => total + item.quantity, 0);
@@ -135,18 +296,6 @@ const OrderManagement: React.FC = () => {
       cancelled: "Storniert",
     };
     return statusMap[status];
-  };
-
-  const verifyLoyaltyDiscount = async (orderId: string) => {
-    try {
-      await OrderService.verifyLoyaltyDiscount(orderId);
-      console.log("Loyalty Rabatt bestätigt");
-      loadOrders();
-      loadStats();
-    } catch (error) {
-      console.error("Error verifying loyalty discount:", error);
-      alert("Fehler beim Bestätigen des Loyalty Rabatts");
-    }
   };
 
   if (loading && orders.length === 0) {

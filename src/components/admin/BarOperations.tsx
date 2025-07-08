@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   collection,
   query,
@@ -48,152 +48,37 @@ const BarOperations: React.FC<BarOperationsProps> = () => {
     new Set()
   );
 
+  // CRITICAL FIX: Add refs to prevent aggressive reloading
+  const isProcessingRef = useRef(false);
+  const lastProcessedOrdersRef = useRef<string>("");
+  const menuItemsRef = useRef<MenuItem[]>([]);
+  const hasLoadedInitialDataRef = useRef(false); // CRITICAL FIX: Track if initial data was loaded
+  const setupRealtimeListenerRef = useRef<any>(null); // CRITICAL FIX: Store stable reference to setupRealtimeListener
+
   const db = getFirestoreDB();
 
-  // Use our robust data loader for initial data
-  const {
-    data: initialData,
-    loading: loadingInitial,
-    error: initialError,
-    isEmpty,
-    loadMultipleData: loadInitialData,
-    reload: reloadInitialData,
-  } = useMultipleAdminDataLoader<BarOperationsData>({
-    initialData: { menuItems: [], pendingOrders: [] },
-    onSuccess: (data) => {
-      console.log("📊 BarOperations: Initial data loaded successfully", {
-        menuItems: data.menuItems.length,
-        pendingOrders: data.pendingOrders.length,
-      });
-      processOrdersWithMenuItems(data.pendingOrders, data.menuItems);
-    },
-    onError: (error) => {
-      console.error("❌ BarOperations: Initial data loading failed:", error);
-      toast.error("Fehler beim Laden der Daten");
-    },
-    checkEmpty: (data) =>
-      data.menuItems.length === 0 && data.pendingOrders.length === 0,
-  });
-
-  // Use realtime data loader for live updates
-  const {
-    loading: loadingRealtime,
-    error: realtimeError,
-    setupRealtimeListener,
-  } = useRealtimeAdminData<Order[]>([], (data) =>
-    Array.isArray(data) ? data.length === 0 : !data
-  );
-
-  // Load initial data when component mounts
-  useEffect(() => {
-    console.log("🔄 BarOperations: Loading initial data");
-
-    loadInitialData({
-      // Load menu items
-      menuItems: async () => {
-        console.log("📋 Loading menu items...");
-        const menuQuery = query(collection(db, "menuItems"));
-        const snapshot = await getDocs(menuQuery);
-
-        const items = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as MenuItem[];
-
-        console.log("📋 Menu items loaded:", items.length);
-        return items;
-      },
-
-      // Load pending orders
-      pendingOrders: async () => {
-        console.log("📊 Loading pending orders...");
-        const ordersQuery = query(
-          collection(db, "orders"),
-          where("status", "in", ["pending", "confirmed", "preparing"]),
-          orderBy("createdAt", "asc")
-        );
-
-        const snapshot = await getDocs(ordersQuery);
-
-        const orders = snapshot.docs.map((doc) => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            ...data,
-            createdAt: safeToDateWithFallback(data.createdAt),
-            updatedAt: safeToDateWithFallback(data.updatedAt),
-          } as Order;
-        });
-
-        console.log("📊 Orders loaded:", orders.length);
-        return orders;
-      },
-    });
-  }, []);
-
-  // Set up realtime listener after initial data is loaded
-  useEffect(() => {
-    if (!initialData || loadingInitial) return;
-
-    console.log("🔄 BarOperations: Setting up realtime listener");
-
-    const unsubscribe = setupRealtimeListener(
-      (callback) => {
-        const ordersQuery = query(
-          collection(db, "orders"),
-          where("status", "in", ["pending", "confirmed", "preparing"]),
-          orderBy("createdAt", "asc")
-        );
-
-        return onSnapshot(
-          ordersQuery,
-          (snapshot) => {
-            console.log("📊 Realtime orders update:", {
-              docs: snapshot.docs.length,
-              fromCache: snapshot.metadata.fromCache,
-              hasPendingWrites: snapshot.metadata.hasPendingWrites,
-            });
-
-            const orders = snapshot.docs.map((doc) => {
-              const data = doc.data();
-              return {
-                id: doc.id,
-                ...data,
-                createdAt: safeToDateWithFallback(data.createdAt),
-                updatedAt: safeToDateWithFallback(data.updatedAt),
-              } as Order;
-            });
-
-            callback(orders);
-          },
-          (error) => {
-            console.error("❌ Realtime listener error:", error);
-            toast.error("Fehler bei der Echtzeitaktualisierung");
-          }
-        );
-      },
-      (orders: Order[]) => {
-        // Process orders with current menu items
-        if (initialData?.menuItems) {
-          processOrdersWithMenuItems(orders, initialData.menuItems);
-        }
-        return orders;
-      }
-    );
-
-    return () => {
-      console.log("🔄 Cleaning up realtime listener");
-      unsubscribe();
-    };
-  }, [initialData, loadingInitial, setupRealtimeListener]);
-
-  // Process orders with menu items to create OrderWithItem objects
+  // CRITICAL FIX: Memoize the processOrdersWithMenuItems function with proper dependencies
   const processOrdersWithMenuItems = useCallback(
     (orders: Order[], menuItems: MenuItem[]) => {
-      console.log("🔄 Processing orders with menu items", {
-        orders: orders.length,
-        menuItems: menuItems.length,
-      });
+      // CRITICAL FIX: Prevent duplicate processing
+      if (isProcessingRef.current) {
+        return;
+      }
+
+      // CRITICAL FIX: Check if orders have actually changed
+      const ordersHash = JSON.stringify(
+        orders.map((o) => ({
+          id: o.id,
+          status: o.status,
+          updatedAt: o.updatedAt,
+        }))
+      );
+      if (ordersHash === lastProcessedOrdersRef.current) {
+        return;
+      }
+
+      isProcessingRef.current = true;
+      lastProcessedOrdersRef.current = ordersHash;
 
       const drinks: OrderWithItem[] = [];
       const shisha: OrderWithItem[] = [];
@@ -212,10 +97,6 @@ const BarOperations: React.FC<BarOperationsProps> = () => {
                 ...menuItem,
               },
             };
-
-            console.log(
-              `🍽️ Processing item: ${menuItem.name} (${menuItem.category})`
-            );
 
             if (
               menuItem.category === "drinks" ||
@@ -238,16 +119,168 @@ const BarOperations: React.FC<BarOperationsProps> = () => {
         });
       });
 
-      console.log("🍹 Processed drink orders:", drinks.length);
-      console.log("💨 Processed shisha orders:", shisha.length);
-
       setDrinkOrders(drinks);
       setShishaOrders(shisha);
+
+      // CRITICAL FIX: Reset processing flag after a short delay
+      setTimeout(() => {
+        isProcessingRef.current = false;
+      }, 100);
     },
-    []
+    [] // Empty dependency array to prevent infinite re-renders
   );
 
-  // Handle completing an order item
+  // Use our robust data loader for initial data
+  const {
+    data: initialData,
+    loading: loadingInitial,
+    error: initialError,
+    isEmpty,
+    loadMultipleData: loadInitialData,
+    reload: reloadInitialData,
+  } = useMultipleAdminDataLoader<BarOperationsData>({
+    initialData: { menuItems: [], pendingOrders: [] },
+    onSuccess: (data) => {
+      // CRITICAL FIX: Store menu items in ref for real-time updates
+      menuItemsRef.current = data.menuItems;
+      processOrdersWithMenuItems(data.pendingOrders, data.menuItems);
+    },
+    onError: (error) => {
+      console.error("❌ BarOperations: Initial data loading failed:", error);
+      toast.error("Fehler beim Laden der Daten");
+    },
+    checkEmpty: (data) =>
+      data.menuItems.length === 0 && data.pendingOrders.length === 0,
+  });
+
+  // CRITICAL FIX: Use realtime data loader with proper cleanup
+  const {
+    loading: loadingRealtime,
+    error: realtimeError,
+    setupRealtimeListener,
+  } = useRealtimeAdminData<Order[]>([], (data) =>
+    Array.isArray(data) ? data.length === 0 : !data
+  );
+
+  // CRITICAL FIX: Store stable reference to setupRealtimeListener
+  setupRealtimeListenerRef.current = setupRealtimeListener;
+
+  // CRITICAL FIX: Load initial data only once when component mounts
+  useEffect(() => {
+    // CRITICAL FIX: Prevent multiple initial data loads
+    if (hasLoadedInitialDataRef.current) {
+      return;
+    }
+
+    hasLoadedInitialDataRef.current = true;
+
+    loadInitialData({
+      // Load menu items
+      menuItems: async () => {
+        const menuQuery = query(collection(db, "menuItems"));
+        const snapshot = await getDocs(menuQuery);
+
+        const items = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as MenuItem[];
+
+        return items;
+      },
+
+      // Load pending orders
+      pendingOrders: async () => {
+        const ordersQuery = query(
+          collection(db, "orders"),
+          where("status", "in", ["pending", "confirmed", "preparing"]),
+          orderBy("createdAt", "asc")
+        );
+
+        const snapshot = await getDocs(ordersQuery);
+
+        const orders = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            createdAt: safeToDateWithFallback(data.createdAt),
+            updatedAt: safeToDateWithFallback(data.updatedAt),
+          } as Order;
+        });
+
+        return orders;
+      },
+    });
+  }, []); // CRITICAL FIX: Empty dependency array - only run once on mount
+
+  // CRITICAL FIX: Set up realtime listener with debouncing and proper cleanup
+  useEffect(() => {
+    if (!initialData || loadingInitial) return;
+
+    let isSubscribed = true;
+    let debounceTimeout: NodeJS.Timeout | null = null;
+
+    const unsubscribe = setupRealtimeListenerRef.current(
+      (callback: (data: Order[]) => void) => {
+        const ordersQuery = query(
+          collection(db, "orders"),
+          where("status", "in", ["pending", "confirmed", "preparing"]),
+          orderBy("createdAt", "asc")
+        );
+
+        return onSnapshot(
+          ordersQuery,
+          (snapshot) => {
+            if (!isSubscribed) return;
+
+            const orders = snapshot.docs.map((doc) => {
+              const data = doc.data();
+              return {
+                id: doc.id,
+                ...data,
+                createdAt: safeToDateWithFallback(data.createdAt),
+                updatedAt: safeToDateWithFallback(data.updatedAt),
+              } as Order;
+            });
+
+            // CRITICAL FIX: Debounce real-time updates to prevent aggressive processing
+            if (debounceTimeout) {
+              clearTimeout(debounceTimeout);
+            }
+
+            debounceTimeout = setTimeout(() => {
+              if (!isSubscribed) return;
+              callback(orders);
+            }, 300); // 300ms debounce
+          },
+          (error) => {
+            if (!isSubscribed) return;
+            console.error("❌ Realtime listener error:", error);
+            toast.error("Fehler bei der Echtzeitaktualisierung");
+          }
+        );
+      },
+      (orders: Order[]) => {
+        if (!isSubscribed || !menuItemsRef.current.length) return orders;
+
+        // CRITICAL FIX: Use stored menu items instead of initialData
+        processOrdersWithMenuItems(orders, menuItemsRef.current);
+        return orders;
+      }
+    );
+
+    return () => {
+      isSubscribed = false;
+      if (debounceTimeout) {
+        clearTimeout(debounceTimeout);
+      }
+      if (unsubscribe && typeof unsubscribe === "function") {
+        unsubscribe();
+      }
+    };
+  }, [initialData, loadingInitial]);
+
+  // CRITICAL FIX: Optimized order completion without full data reload
   const handleCompleteItem = async (orderId: string) => {
     if (completingOrders.has(orderId)) return;
 
@@ -257,8 +290,8 @@ const BarOperations: React.FC<BarOperationsProps> = () => {
       await OrderService.updateOrderStatus(orderId, "ready");
       toast.success("Bestellung abgeschlossen");
 
-      // Reload data to ensure consistency
-      reloadInitialData();
+      // CRITICAL FIX: Don't reload all data, just let real-time listener handle it
+      // The real-time listener will automatically update the UI
     } catch (error) {
       console.error("❌ Error completing order:", error);
       toast.error("Fehler beim Abschließen der Bestellung");
@@ -271,7 +304,7 @@ const BarOperations: React.FC<BarOperationsProps> = () => {
     }
   };
 
-  // Handle starting preparation
+  // CRITICAL FIX: Optimized preparation start without full data reload
   const handleStartPreparing = async (orderId: string) => {
     if (completingOrders.has(orderId)) return;
 
@@ -280,6 +313,9 @@ const BarOperations: React.FC<BarOperationsProps> = () => {
     try {
       await OrderService.updateOrderStatus(orderId, "preparing");
       toast.success("Zubereitung gestartet");
+
+      // CRITICAL FIX: Don't reload all data, just let real-time listener handle it
+      // The real-time listener will automatically update the UI
     } catch (error) {
       console.error("❌ Error starting preparation:", error);
       toast.error("Fehler beim Starten der Zubereitung");

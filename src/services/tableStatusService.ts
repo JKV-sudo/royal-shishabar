@@ -103,15 +103,30 @@ export class TableStatusService {
       tableStatus.lastActivity = activeReservation.updatedAt;
     }
 
-    // Find current order
-    const activeOrder = orders
+    // Find current order - ADD DEBUGGING HERE
+    const tableOrders = orders.filter(o => o.tableNumber === table.number);
+    console.log(`🔍 Table ${table.number} orders:`, tableOrders.map(o => ({
+      id: o.id,
+      status: o.status,
+      totalAmount: o.totalAmount,
+      createdAt: o.createdAt
+    })));
+
+    const activeOrder = tableOrders
       .filter(o => ['pending', 'confirmed', 'preparing', 'ready'].includes(o.status))
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
 
     if (activeOrder) {
+      console.log(`✅ Table ${table.number} active order:`, {
+        id: activeOrder.id,
+        status: activeOrder.status,
+        totalAmount: activeOrder.totalAmount
+      });
       tableStatus.currentOrder = activeOrder;
       tableStatus.customerName = activeOrder.customerName || tableStatus.customerName;
       tableStatus.lastActivity = activeOrder.updatedAt;
+    } else {
+      console.log(`❌ Table ${table.number} no active order found`);
     }
 
     // Calculate waiting time
@@ -194,7 +209,8 @@ export class TableStatusService {
     // Listen to reservation changes
     const reservationUnsubscribe = onSnapshot(
       query(collection(db, 'reservations'), orderBy('updatedAt', 'desc')),
-      () => {
+      (snapshot) => {
+        console.log('🔄 Reservation change detected:', snapshot.docs.length, 'reservations');
         // Refresh table statuses when reservations change
         this.getTableStatuses().then(callback).catch(console.error);
       }
@@ -203,7 +219,8 @@ export class TableStatusService {
     // Listen to order changes  
     const orderUnsubscribe = onSnapshot(
       query(collection(db, 'orders'), orderBy('updatedAt', 'desc')),
-      () => {
+      (snapshot) => {
+        console.log('🔄 Order change detected:', snapshot.docs.length, 'orders');
         // Refresh table statuses when orders change
         this.getTableStatuses().then(callback).catch(console.error);
       }
