@@ -513,118 +513,155 @@ const OrderManagement: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-royal-gold/20">
-              {orders.map((order) => {
-                const StatusIcon = statusIcons[order.status];
-                return (
-                  <motion.tr
-                    key={order.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="hover:bg-royal-charcoal/5 transition-colors"
-                  >
-                    <td className="px-4 py-3">
-                      <span className="font-mono text-sm text-royal-cream/70">
-                        #{order.id.slice(-8)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="bg-royal-gold/20 text-royal-gold px-2 py-1 rounded-full text-sm font-semibold">
-                        Tisch {order.tableNumber}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div>
-                        <p className="font-medium text-royal-cream">
-                          {order.customerName || "Anonym"}
-                        </p>
-                        {order.customerPhone && (
-                          <p className="text-sm text-royal-cream/70">
-                            {order.customerPhone}
-                          </p>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="text-sm text-royal-cream/70">
-                        <p>{getTotalItems(order)} Artikel</p>
-                        <p className="text-xs">
-                          {order.items
-                            .slice(0, 2)
-                            .map((item) => item.name)
-                            .join(", ")}
-                          {order.items.length > 2 && "..."}
-                        </p>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center space-x-2">
-                        <span className="font-bold text-royal-gold">
-                          {order.totalAmount.toFixed(2)}€
+              {orders
+                .filter((order) => order.status !== "delivered")
+                .map((order) => {
+                  const StatusIcon = statusIcons[order.status];
+                  return (
+                    <motion.tr
+                      key={order.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="hover:bg-royal-charcoal/5 transition-colors"
+                    >
+                      <td className="px-4 py-3">
+                        <span className="font-mono text-sm text-royal-cream/70">
+                          #{order.id.slice(-8)}
                         </span>
-                        {/* Loyalty Badge */}
-                        {order.loyaltyDiscount && (
-                          <div className="flex items-center space-x-1 bg-royal-purple text-white px-2 py-1 rounded-full text-xs">
-                            <Crown className="w-3 h-3" />
-                            <span>
-                              -{order.loyaltyDiscount.amount.toFixed(2)}€
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          statusColors[order.status]
-                        }`}
-                      >
-                        <StatusIcon className="w-3 h-3 mr-1" />
-                        {formatStatus(order.status)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-royal-cream/70">
-                      {format(order.createdAt, "dd.MM.yyyy HH:mm", {
-                        locale: de,
-                      })}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => setSelectedOrder(order)}
-                          className="p-1 hover:bg-royal-gold/20 rounded transition-colors"
-                          title="Details anzeigen"
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="bg-royal-gold/20 text-royal-gold px-2 py-1 rounded-full text-sm font-semibold">
+                          Tisch {order.tableNumber}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div>
+                          <p className="font-medium text-royal-cream">
+                            {order.customerName || "Anonym"}
+                          </p>
+                          {order.customerPhone && (
+                            <p className="text-sm text-royal-cream/70">
+                              {order.customerPhone}
+                            </p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="text-sm text-royal-cream/70">
+                          <p>{getTotalItems(order)} Artikel</p>
+                          <p className="text-xs">
+                            {order.items
+                              .slice(0, 2)
+                              .map((item) => item.name)
+                              .join(", ")}
+                            {order.items.length > 2 && "..."}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-bold text-royal-gold">
+                            {order.totalAmount.toFixed(2)}€
+                          </span>
+                          {/* Loyalty Badge */}
+                          {order.loyaltyDiscount && (
+                            <div className="flex items-center space-x-1 bg-royal-purple text-white px-2 py-1 rounded-full text-xs">
+                              <Crown className="w-3 h-3" />
+                              <span>
+                                -{order.loyaltyDiscount.amount.toFixed(2)}€
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            statusColors[order.status]
+                          }`}
                         >
-                          <Eye className="w-4 h-4 text-royal-gold" />
-                        </button>
-                        <select
-                          value={order.status}
-                          onChange={(e) =>
-                            updateOrderStatus(
-                              order.id,
-                              e.target.value as OrderStatus
-                            )
-                          }
-                          className="text-xs border border-royal-gold/30 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-royal-gold/50 bg-royal-charcoal text-royal-cream"
-                        >
-                          <option value="pending">Ausstehend</option>
-                          <option value="confirmed">Bestätigt</option>
-                          <option value="preparing">In Zubereitung</option>
-                          <option value="ready">Bereit</option>
-                          <option value="delivered">Ausgeliefert</option>
-                          <option value="cancelled">Storniert</option>
-                        </select>
-                        <button
-                          onClick={() => deleteOrder(order.id)}
-                          className="p-1 hover:bg-red-100 rounded transition-colors"
-                          title="Bestellung löschen"
-                        >
-                          <Trash2 className="w-4 h-4 text-red-500" />
-                        </button>
-                      </div>
-                    </td>
-                  </motion.tr>
-                );
-              })}
+                          <StatusIcon className="w-3 h-3 mr-1" />
+                          {formatStatus(order.status)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-royal-cream/70">
+                        {format(order.createdAt, "dd.MM.yyyy HH:mm", {
+                          locale: de,
+                        })}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col space-y-2">
+                          <button
+                            onClick={() => setSelectedOrder(order)}
+                            className="p-2 rounded bg-royal-gold/20 text-royal-gold hover:bg-royal-gold/30 flex items-center justify-center min-h-[44px]"
+                            title="Details anzeigen"
+                            style={{ fontSize: 16 }}
+                          >
+                            <Eye className="w-5 h-5 mr-1" />
+                            Details
+                          </button>
+                          {order.status === "pending" && (
+                            <button
+                              onClick={() =>
+                                updateOrderStatus(order.id, "confirmed")
+                              }
+                              className="p-2 rounded bg-blue-600 text-white hover:bg-blue-700 flex items-center justify-center min-h-[44px]"
+                              style={{ fontSize: 16 }}
+                            >
+                              <CheckCircle className="w-5 h-5 mr-1" />
+                              Bestätigen
+                            </button>
+                          )}
+                          {order.status === "confirmed" && (
+                            <button
+                              onClick={() =>
+                                updateOrderStatus(order.id, "preparing")
+                              }
+                              className="p-2 rounded bg-purple-600 text-white hover:bg-purple-700 flex items-center justify-center min-h-[44px]"
+                              style={{ fontSize: 16 }}
+                            >
+                              <RefreshCw className="w-5 h-5 mr-1" />
+                              Zubereitung starten
+                            </button>
+                          )}
+                          {order.status === "preparing" && (
+                            <button
+                              onClick={() =>
+                                updateOrderStatus(order.id, "ready")
+                              }
+                              className="p-2 rounded bg-green-600 text-white hover:bg-green-700 flex items-center justify-center min-h-[44px]"
+                              style={{ fontSize: 16 }}
+                            >
+                              <CheckCircle className="w-5 h-5 mr-1" />
+                              Bereit
+                            </button>
+                          )}
+                          {order.status === "ready" && (
+                            <button
+                              onClick={() =>
+                                updateOrderStatus(order.id, "delivered")
+                              }
+                              className="p-2 rounded bg-royal-charcoal text-royal-cream hover:bg-royal-charcoal/80 flex items-center justify-center min-h-[44px]"
+                              style={{ fontSize: 16 }}
+                            >
+                              <Package className="w-5 h-5 mr-1" />
+                              Ausliefern
+                            </button>
+                          )}
+                          <button
+                            onClick={() => deleteOrder(order.id)}
+                            className="p-2 rounded bg-red-100 text-red-600 hover:bg-red-200 flex items-center justify-center min-h-[44px]"
+                            style={{ fontSize: 16 }}
+                            title="Bestellung löschen"
+                          >
+                            <Trash2 className="w-5 h-5 mr-1" />
+                            Löschen
+                          </button>
+                        </div>
+                      </td>
+                    </motion.tr>
+                  );
+                })}
             </tbody>
           </table>
         </div>
@@ -651,7 +688,7 @@ const OrderManagement: React.FC = () => {
               </h3>
               <button
                 onClick={() => setSelectedOrder(null)}
-                className="p-2 hover:bg-royal-charcoal/20 rounded-full transition-colors"
+                className="p-2 hover:bg-royal-charcoal/20 rounded-full transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
               >
                 <XCircle className="w-5 h-5 text-royal-charcoal" />
               </button>
@@ -768,7 +805,7 @@ const OrderManagement: React.FC = () => {
                           onClick={() =>
                             verifyLoyaltyDiscount(selectedOrder.id)
                           }
-                          className="px-3 py-1 bg-royal-purple text-white rounded-royal text-xs hover:bg-royal-purple-light"
+                          className="px-3 py-2 bg-royal-purple text-white rounded-royal text-xs hover:bg-royal-purple-light min-h-[44px]"
                         >
                           Bestätigen
                         </button>
