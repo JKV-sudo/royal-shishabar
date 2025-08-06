@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   FileText,
@@ -74,11 +74,7 @@ const OrderReports: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [additionalFilters, setAdditionalFilters] = useState<OrderFilters>({});
 
-  useEffect(() => {
-    generateReport();
-  }, [selectedPeriod, customDateRange]);
-
-  const getDateRange = (): { start: Date; end: Date } => {
+  const getDateRange = useCallback((): { start: Date; end: Date } => {
     const now = new Date();
 
     switch (selectedPeriod) {
@@ -126,9 +122,9 @@ const OrderReports: React.FC = () => {
           end: endOfDay(now),
         };
     }
-  };
+  }, [selectedPeriod, customDateRange]);
 
-  const generateReport = async () => {
+  const generateReport = useCallback(async () => {
     try {
       setLoading(true);
       const dateRange = getDateRange();
@@ -151,7 +147,11 @@ const OrderReports: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [getDateRange, additionalFilters]);
+
+  useEffect(() => {
+    generateReport();
+  }, [generateReport]);
 
   const calculateStats = (orders: Order[]) => {
     const totalOrders = orders.length;

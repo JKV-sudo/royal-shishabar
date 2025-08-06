@@ -323,36 +323,27 @@ describe('Identified Admin Component Issues', () => {
     });
   });
 
-  describe('Live Table Grid Component', () => {
-    it('should handle table status calculation timing', () => {
-      // Pattern from LiveTableGrid: real-time listener setup
-      let tableStatuses: any[] = [];
-      let isLoading = true;
+  describe('Simple Live Table Grid Component', () => {
+    it('should handle basic table display', () => {
+      // Simplified table grid without complex status calculations
+      const mockTables = [
+        { id: '1', number: 1, capacity: 4, location: 'indoor' },
+        { id: '2', number: 2, capacity: 2, location: 'outdoor' }
+      ];
+      
+      const mockOrders = [
+        { id: '1', tableNumber: 1, status: 'delivered', totalAmount: 25.50, payment: { status: 'unpaid' } }
+      ];
 
-      const mockTableStatusService = {
-        onTableStatusChange: (callback: (statuses: any[]) => void) => {
-          // Simulate async status calculation
-          setTimeout(() => {
-            callback([
-              { table: { number: 1 }, status: 'available' },
-              { table: { number: 2 }, status: 'occupied' }
-            ]);
-            isLoading = false;
-          }, 10);
-          
-          return () => {}; // unsubscribe
-        }
-      };
-
-      return new Promise(resolve => {
-        const unsubscribe = mockTableStatusService.onTableStatusChange((statuses) => {
-          tableStatuses = statuses;
-          expect(tableStatuses).toHaveLength(2);
-          expect(isLoading).toBe(false);
-          unsubscribe();
-          resolve(undefined);
-        });
+      // Simple status calculation
+      const tableStatuses = mockTables.map(table => {
+        const hasOrder = mockOrders.some(order => order.tableNumber === table.number);
+        return { table, hasActiveOrder: hasOrder };
       });
+
+      expect(tableStatuses).toHaveLength(2);
+      expect(tableStatuses[0].hasActiveOrder).toBe(true);
+      expect(tableStatuses[1].hasActiveOrder).toBe(false);
     });
   });
 }); 

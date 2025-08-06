@@ -136,7 +136,6 @@ export class OrderService {
   // Get orders with filters
   static async getOrdersWithFilters(filters: OrderFilters): Promise<Order[]> {
     try {
-      console.log('🔍 Loading orders with filters:', filters);
       const db = getFirestoreDB();
       const collectionRef = collection(db, this.collectionName);
       let q: any = collectionRef;
@@ -491,6 +490,32 @@ export class OrderService {
       });
     } catch (error) {
       console.error('Error getting unpaid orders for table:', error);
+      throw error;
+    }
+  }
+
+  // Get all orders for a table
+  static async getOrdersForTable(tableNumber: number): Promise<Order[]> {
+    try {
+      const db = getFirestoreDB();
+      const q = query(
+        collection(db, this.collectionName),
+        where('tableNumber', '==', tableNumber)
+      );
+
+      const querySnapshot = await getDocs(q);
+      const orders = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...this.convertOrderDates(data),
+        } as Order;
+      });
+
+      // Sort by createdAt in JavaScript instead of Firestore
+      return orders.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    } catch (error) {
+      console.error('Error getting orders for table:', error);
       throw error;
     }
   }

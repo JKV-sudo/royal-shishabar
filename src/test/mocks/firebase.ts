@@ -3,7 +3,7 @@ import { vi } from 'vitest';
 import { Order } from '../../types/order';
 import { Reservation } from '../../types/reservation';
 import { MenuItem } from '../../types/menu';
-import { TableStatus } from '../../types/tableStatus';
+// TableStatus types removed - using simplified table display
 
 // Mock data generators
 export const createMockOrder = (overrides: Partial<Order> = {}): Order => ({
@@ -66,22 +66,7 @@ export const createMockMenuItem = (overrides: Partial<MenuItem> = {}): MenuItem 
   ...overrides
 });
 
-export const createMockTableStatus = (overrides: Partial<TableStatus> = {}): TableStatus => ({
-  table: {
-    id: 'table-1',
-    number: 1,
-    capacity: 4,
-    location: 'indoor',
-    amenities: ['smoking_area'],
-    priceMultiplier: 1.0,
-    isActive: true
-  },
-  reservation: null,
-  currentOrder: null,
-  status: 'available',
-  lastActivity: new Date(),
-  ...overrides
-});
+// createMockTableStatus removed - using simplified table display without complex status
 
 // Mock Firebase SDK functions
 export const createMockFirestore = () => {
@@ -264,12 +249,8 @@ export const TEST_DATA = {
     createMockMenuItem({ id: 'item-1', category: 'shisha' }),
     createMockMenuItem({ id: 'item-2', category: 'drinks' }),
     createMockMenuItem({ id: 'item-3', category: 'food' })
-  ],
-  tableStatuses: [
-    createMockTableStatus({ table: { id: 'table-1', number: 1, capacity: 4, location: 'indoor', amenities: ['smoking_area'], priceMultiplier: 1.0, isActive: true }, status: 'available' }),
-    createMockTableStatus({ table: { id: 'table-2', number: 2, capacity: 6, location: 'outdoor', amenities: ['smoking_area'], priceMultiplier: 1.0, isActive: true }, status: 'occupied' }),
-    createMockTableStatus({ table: { id: 'table-3', number: 3, capacity: 2, location: 'vip', amenities: ['smoking_area', 'private'], priceMultiplier: 1.5, isActive: true }, status: 'reserved' })
   ]
+  // tableStatuses removed - using simplified table display
 };
 
 export default {
@@ -277,7 +258,7 @@ export default {
   createMockOrder,
   createMockReservation,
   createMockMenuItem,
-  createMockTableStatus,
+  // createMockTableStatus removed,
   createTestScenarios,
   createMockComponentProps,
   TEST_DATA,

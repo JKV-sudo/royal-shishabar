@@ -12,12 +12,15 @@ import PopupManagement from "../components/admin/PopupManagement";
 import ReservationManagement from "../components/admin/ReservationManagement";
 import LoyaltyManagement from "../components/admin/LoyaltyManagement";
 import { TableManagement } from "../components/admin/TableManagement";
-import LiveTableGrid from "../components/admin/LiveTableGrid";
+import SimpleLiveTableGrid from "../components/admin/SimpleLiveTableGrid";
 import { IntegrationDashboard } from "../components/admin/IntegrationDashboard";
 import BarOperations from "../components/admin/BarOperations";
 import AdminGDPRDashboard from "../components/gdpr/AdminGDPRDashboard";
 import OrderReports from "../components/admin/OrderReports";
 import { motion } from "framer-motion";
+import { Table } from "../types/reservation";
+import { Order } from "../types/order";
+import { OrderService } from "../services/orderService";
 import {
   Users,
   Calendar,
@@ -44,6 +47,10 @@ import {
   ChefHat,
   Shield,
   FileText,
+  Check,
+  Clock,
+  CreditCard,
+  X,
 } from "lucide-react";
 
 const Admin: React.FC = () => {
@@ -51,6 +58,9 @@ const Admin: React.FC = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [isLoading, setIsLoading] = useState(false);
   const [events, setEvents] = useState<Event[]>([]);
+  const [selectedTable, setSelectedTable] = useState<Table | null>(null);
+  const [tableOrders, setTableOrders] = useState<Order[]>([]);
+  const [loadingTableDetails, setLoadingTableDetails] = useState(false);
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData>({
     totalUsers: 0,
     activeUsers: 0,
@@ -102,6 +112,89 @@ const Admin: React.FC = () => {
   const refreshData = async () => {
     await Promise.all([loadEvents(), loadAnalytics()]);
     toast.success("Data refreshed successfully");
+  };
+
+  const handleTableClick = async (table: Table) => {
+    setSelectedTable(table);
+    setLoadingTableDetails(true);
+
+    try {
+      // Load orders for this table
+      const orders = await OrderService.getOrdersForTable(table.number);
+      setTableOrders(orders);
+    } catch (error) {
+      console.error("Error loading table orders:", error);
+      toast.error("Fehler beim Laden der Tischbestellungen");
+      setTableOrders([]);
+    } finally {
+      setLoadingTableDetails(false);
+    }
+  };
+
+  const handleOrderStatusUpdate = async (
+    orderId: string,
+    newStatus: string
+  ) => {
+    try {
+      await OrderService.updateOrderStatus(orderId, newStatus as any);
+      toast.success(`Bestellstatus zu "${newStatus}" geändert`);
+
+      // Reload table orders
+      if (selectedTable) {
+        const updatedOrders = await OrderService.getOrdersForTable(
+          selectedTable.number
+        );
+        setTableOrders(updatedOrders);
+      }
+    } catch (error) {
+      console.error("Error updating order status:", error);
+      toast.error("Fehler beim Aktualisieren des Bestellstatus");
+    }
+  };
+
+  const handlePaymentStatusUpdate = async (
+    orderId: string,
+    paymentStatus: string
+  ) => {
+    try {
+      await OrderService.updatePaymentStatus(orderId, paymentStatus as any);
+      toast.success(`Zahlungsstatus zu "${paymentStatus}" geändert`);
+
+      // Reload table orders
+      if (selectedTable) {
+        const updatedOrders = await OrderService.getOrdersForTable(
+          selectedTable.number
+        );
+        setTableOrders(updatedOrders);
+      }
+    } catch (error) {
+      console.error("Error updating payment status:", error);
+      toast.error("Fehler beim Aktualisieren des Zahlungsstatus");
+    }
+  };
+
+  const handleDeleteOrder = async (orderId: string) => {
+    if (
+      !confirm("Sind Sie sicher, dass Sie diese Bestellung löschen möchten?")
+    ) {
+      return;
+    }
+
+    try {
+      await OrderService.deleteOrder(orderId);
+      toast.success("Bestellung gelöscht");
+
+      // Reload table orders
+      if (selectedTable) {
+        const updatedOrders = await OrderService.getOrdersForTable(
+          selectedTable.number
+        );
+        setTableOrders(updatedOrders);
+      }
+    } catch (error) {
+      console.error("Error deleting order:", error);
+      toast.error("Fehler beim Löschen der Bestellung");
+    }
   };
 
   useEffect(() => {
@@ -167,24 +260,60 @@ const Admin: React.FC = () => {
     );
   }
 
-  const tabs = [
-    { id: "dashboard", name: "Dashboard", icon: BarChart3 },
-    { id: "reservations", name: "Reservations", icon: CalendarCheck },
-    { id: "tables", name: "Tables", icon: Grid },
-    { id: "live-status", name: "Live Status", icon: Monitor },
-    { id: "integration", name: "Integration", icon: Link },
-    { id: "events", name: "Events", icon: Calendar },
-    { id: "users", name: "Users", icon: Users },
-    { id: "loyalty", name: "Stempelpass", icon: Crown },
-    { id: "analytics", name: "Analytics", icon: TrendingUp },
-    { id: "gdpr", name: "GDPR", icon: Shield },
-    { id: "settings", name: "Settings", icon: Settings },
-    { id: "menu", name: "Menu", icon: Utensils },
-    { id: "special-offers", name: "Sonderangebote", icon: Tag },
-    { id: "orders", name: "Orders", icon: Package },
-    { id: "reports", name: "Berichte", icon: FileText },
-    { id: "bar-operations", name: "Bar Operations", icon: ChefHat },
-    { id: "popup", name: "Popups", icon: MessageSquare },
+  // Organized navigation with grouped categories
+  const navigationGroups = [
+    {
+      title: "HAUPTBEREICH",
+      items: [
+        { id: "dashboard", name: "Dashboard", icon: BarChart3 },
+        {
+          id: "live-status",
+          name: "Live Tische",
+          icon: Monitor,
+          priority: true,
+        },
+        { id: "orders", name: "Bestellungen", icon: Package, priority: true },
+        {
+          id: "bar-operations",
+          name: "Bar Operations",
+          icon: ChefHat,
+          priority: true,
+        },
+      ],
+    },
+    {
+      title: "GASTRONOMIE",
+      items: [
+        { id: "reservations", name: "Reservierungen", icon: CalendarCheck },
+        { id: "tables", name: "Tische", icon: Grid },
+        { id: "menu", name: "Menü", icon: Utensils },
+        { id: "special-offers", name: "Angebote", icon: Tag },
+      ],
+    },
+    {
+      title: "KUNDENVERWALTUNG",
+      items: [
+        { id: "loyalty", name: "Stempelpass", icon: Crown },
+        { id: "events", name: "Events", icon: Calendar },
+        { id: "users", name: "Benutzer", icon: Users },
+      ],
+    },
+    {
+      title: "BERICHTE & ANALYTICS",
+      items: [
+        { id: "analytics", name: "Analytics", icon: TrendingUp },
+        { id: "reports", name: "Berichte", icon: FileText },
+      ],
+    },
+    {
+      title: "SYSTEM",
+      items: [
+        { id: "integration", name: "Integration", icon: Link },
+        { id: "popup", name: "Popups", icon: MessageSquare },
+        { id: "gdpr", name: "GDPR", icon: Shield },
+        { id: "settings", name: "Einstellungen", icon: Settings },
+      ],
+    },
   ];
 
   const renderDashboard = () => (
@@ -692,7 +821,7 @@ const Admin: React.FC = () => {
       case "tables":
         return <TableManagement />;
       case "live-status":
-        return <LiveTableGrid />;
+        return <SimpleLiveTableGrid onTableClick={handleTableClick} />;
       case "integration":
         return <IntegrationDashboard />;
       case "events":
@@ -728,7 +857,7 @@ const Admin: React.FC = () => {
     <div className="min-h-screen bg-royal-charcoal-dark">
       <div className="flex">
         {/* Sidebar */}
-        <div className="w-64 bg-royal-charcoal min-h-screen border-r border-royal-gold/20">
+        <div className="w-80 bg-royal-charcoal min-h-screen border-r border-royal-gold/20 overflow-y-auto">
           <div className="p-6">
             <div className="flex items-center space-x-3 mb-8">
               <Crown className="w-8 h-8 text-royal-gold" />
@@ -737,33 +866,406 @@ const Admin: React.FC = () => {
               </h1>
             </div>
 
-            <nav className="space-y-2">
-              {tabs.map((tab) => {
-                const Icon = tab.icon;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${
-                      activeTab === tab.id
-                        ? "bg-royal-gradient-gold text-royal-charcoal"
-                        : "text-royal-cream hover:bg-royal-charcoal-dark"
-                    }`}
-                  >
-                    <Icon className="w-5 h-5" />
-                    <span>{tab.name}</span>
-                  </button>
-                );
-              })}
+            <nav className="space-y-6">
+              {navigationGroups.map((group) => (
+                <div key={group.title}>
+                  <h3 className="text-xs font-semibold text-royal-gold/80 uppercase tracking-wider mb-3 px-2">
+                    {group.title}
+                  </h3>
+                  <div className="space-y-1">
+                    {group.items.map((item) => {
+                      const Icon = item.icon;
+                      const isActive = activeTab === item.id;
+                      const isPriority = item.priority;
+
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => setActiveTab(item.id)}
+                          className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+                            isActive
+                              ? "bg-royal-gradient-gold text-royal-charcoal shadow-lg"
+                              : isPriority
+                              ? "text-royal-cream bg-royal-charcoal-dark/50 hover:bg-royal-charcoal-dark border border-royal-gold/20"
+                              : "text-royal-cream/80 hover:bg-royal-charcoal-dark hover:text-royal-cream"
+                          }`}
+                        >
+                          <Icon
+                            className={`w-5 h-5 ${
+                              isPriority && !isActive ? "text-royal-gold" : ""
+                            }`}
+                          />
+                          <span
+                            className={`${
+                              isPriority && !isActive ? "font-medium" : ""
+                            }`}
+                          >
+                            {item.name}
+                          </span>
+                          {isPriority && !isActive && (
+                            <div className="ml-auto w-2 h-2 bg-royal-gold rounded-full animate-pulse"></div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </nav>
           </div>
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 p-8">
-          <div className="max-w-7xl mx-auto">{renderContent()}</div>
+        <div className="flex-1 p-6">
+          <div className="max-w-6xl mx-auto">{renderContent()}</div>
         </div>
       </div>
+
+      {/* Table Details Modal */}
+      {selectedTable && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={() => setSelectedTable(null)}
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="bg-white rounded-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-slate-800 flex items-center">
+                <span className="mr-3">🪑</span>
+                Tisch {selectedTable.number} Details
+              </h2>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => handleTableClick(selectedTable)}
+                  disabled={loadingTableDetails}
+                  className="p-2 hover:bg-blue-50 rounded-xl transition-colors text-blue-600 disabled:opacity-50"
+                  title="Daten aktualisieren"
+                >
+                  <RefreshCw
+                    className={`w-5 h-5 ${
+                      loadingTableDetails ? "animate-spin" : ""
+                    }`}
+                  />
+                </button>
+                <button
+                  onClick={() => setSelectedTable(null)}
+                  className="p-2 hover:bg-slate-100 rounded-xl transition-colors"
+                >
+                  <svg
+                    className="w-6 h-6 text-slate-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Table Info */}
+            <div className="grid grid-cols-2 gap-6 mb-8">
+              <div className="bg-slate-50 p-4 rounded-xl">
+                <h3 className="font-semibold text-slate-700 mb-2">
+                  Tisch Informationen
+                </h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">Kapazität:</span>
+                    <span className="font-medium">
+                      {selectedTable.capacity} Personen
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">Bereich:</span>
+                    <span className="font-medium">
+                      {selectedTable.location === "vip"
+                        ? "VIP"
+                        : selectedTable.location === "outdoor"
+                        ? "Außenbereich"
+                        : "Innenbereich"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">Preismultiplikator:</span>
+                    <span className="font-medium">
+                      {selectedTable.priceMultiplier}x
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-4 rounded-xl">
+                <h3 className="font-semibold text-slate-700 mb-2">Status</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">Aktiv:</span>
+                    <span
+                      className={`font-medium ${
+                        selectedTable.isActive
+                          ? "text-green-600"
+                          : "text-red-600"
+                      }`}
+                    >
+                      {selectedTable.isActive ? "Ja" : "Nein"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">Bestellungen:</span>
+                    <span className="font-medium">{tableOrders.length}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Orders Section */}
+            <div>
+              <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center">
+                <span className="mr-2">📋</span>
+                Aktuelle Bestellungen
+              </h3>
+
+              {loadingTableDetails ? (
+                <div className="text-center py-8">
+                  <LoadingSpinner />
+                  <p className="text-slate-600 mt-2">Lade Bestellungen...</p>
+                </div>
+              ) : tableOrders.length === 0 ? (
+                <div className="text-center py-8 bg-slate-50 rounded-xl">
+                  <span className="text-4xl mb-2 block">🍽️</span>
+                  <p className="text-slate-600">Keine aktiven Bestellungen</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {tableOrders.map((order) => (
+                    <div
+                      key={order.id}
+                      className="bg-white p-6 rounded-xl border-2 border-slate-200 shadow-sm"
+                    >
+                      {/* Order Header */}
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <span className="font-bold text-slate-800 text-lg">
+                            Bestellung #{order.id.slice(-6)}
+                          </span>
+                          <span
+                            className={`ml-3 px-3 py-1 rounded-full text-sm font-medium ${
+                              order.status === "delivered"
+                                ? order.payment?.status === "unpaid" ||
+                                  order.payment?.status === "partial"
+                                  ? "bg-red-100 text-red-700"
+                                  : "bg-green-100 text-green-700"
+                                : "bg-amber-100 text-amber-700"
+                            }`}
+                          >
+                            {order.status === "delivered"
+                              ? order.payment?.status === "unpaid" ||
+                                order.payment?.status === "partial"
+                                ? "💳 Zu bezahlen"
+                                : "✅ Bezahlt"
+                              : "🍽️ In Bearbeitung"}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <span className="font-bold text-slate-800 text-xl">
+                            €{order.totalAmount.toFixed(2)}
+                          </span>
+                          <button
+                            onClick={() => handleDeleteOrder(order.id)}
+                            className="ml-3 p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Bestellung löschen"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Order Details */}
+                      <div className="grid grid-cols-2 gap-4 mb-4 text-sm text-slate-600">
+                        <div>
+                          <strong>Erstellt:</strong>{" "}
+                          {order.createdAt.toLocaleString("de-DE")}
+                        </div>
+                        <div>
+                          <strong>Items:</strong> {order.items.length} Artikel
+                        </div>
+                        <div>
+                          <strong>Status:</strong> {order.status}
+                        </div>
+                        <div>
+                          <strong>Zahlung:</strong>{" "}
+                          {order.payment?.status || "unpaid"}
+                        </div>
+                      </div>
+
+                      {order.specialInstructions && (
+                        <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                          <strong className="text-blue-800">
+                            Anweisungen:
+                          </strong>
+                          <p className="text-blue-700 mt-1">
+                            {order.specialInstructions}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Order Items */}
+                      <div className="mb-4">
+                        <h5 className="font-semibold text-slate-700 mb-2">
+                          Bestellte Artikel:
+                        </h5>
+                        <div className="space-y-1">
+                          {order.items.map((item, index) => (
+                            <div
+                              key={index}
+                              className="flex justify-between text-sm"
+                            >
+                              <span>
+                                {item.quantity}x {item.name}
+                              </span>
+                              <span>
+                                €{(item.price * item.quantity).toFixed(2)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="border-t pt-4">
+                        <div className="flex flex-wrap gap-2">
+                          {/* Order Status Buttons */}
+                          <div className="flex flex-wrap gap-2 mb-2">
+                            <span className="text-sm font-medium text-slate-600 self-center mr-2">
+                              Bestellstatus:
+                            </span>
+                            {order.status !== "pending" && (
+                              <button
+                                onClick={() =>
+                                  handleOrderStatusUpdate(order.id, "pending")
+                                }
+                                className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm flex items-center"
+                              >
+                                <Clock className="w-3 h-3 mr-1" />
+                                Ausstehend
+                              </button>
+                            )}
+                            {order.status !== "confirmed" && (
+                              <button
+                                onClick={() =>
+                                  handleOrderStatusUpdate(order.id, "confirmed")
+                                }
+                                className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm flex items-center"
+                              >
+                                <Check className="w-3 h-3 mr-1" />
+                                Bestätigt
+                              </button>
+                            )}
+                            {order.status !== "preparing" && (
+                              <button
+                                onClick={() =>
+                                  handleOrderStatusUpdate(order.id, "preparing")
+                                }
+                                className="px-3 py-1 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors text-sm flex items-center"
+                              >
+                                <ChefHat className="w-3 h-3 mr-1" />
+                                Zubereitung
+                              </button>
+                            )}
+                            {order.status !== "ready" && (
+                              <button
+                                onClick={() =>
+                                  handleOrderStatusUpdate(order.id, "ready")
+                                }
+                                className="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors text-sm flex items-center"
+                              >
+                                <Check className="w-3 h-3 mr-1" />
+                                Bereit
+                              </button>
+                            )}
+                            {order.status !== "delivered" && (
+                              <button
+                                onClick={() =>
+                                  handleOrderStatusUpdate(order.id, "delivered")
+                                }
+                                className="px-3 py-1 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors text-sm flex items-center"
+                              >
+                                <Check className="w-3 h-3 mr-1" />
+                                Geliefert
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Payment Status Buttons */}
+                          {order.status === "delivered" && (
+                            <div className="flex flex-wrap gap-2 w-full">
+                              <span className="text-sm font-medium text-slate-600 self-center mr-2">
+                                Zahlung:
+                              </span>
+                              {order.payment?.status !== "paid" && (
+                                <button
+                                  onClick={() =>
+                                    handlePaymentStatusUpdate(order.id, "paid")
+                                  }
+                                  className="px-3 py-1 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors text-sm flex items-center"
+                                >
+                                  <CreditCard className="w-3 h-3 mr-1" />
+                                  Als bezahlt markieren
+                                </button>
+                              )}
+                              {order.payment?.status !== "partial" && (
+                                <button
+                                  onClick={() =>
+                                    handlePaymentStatusUpdate(
+                                      order.id,
+                                      "partial"
+                                    )
+                                  }
+                                  className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 transition-colors text-sm flex items-center"
+                                >
+                                  <CreditCard className="w-3 h-3 mr-1" />
+                                  Teilweise bezahlt
+                                </button>
+                              )}
+                              {order.payment?.status !== "unpaid" && (
+                                <button
+                                  onClick={() =>
+                                    handlePaymentStatusUpdate(
+                                      order.id,
+                                      "unpaid"
+                                    )
+                                  }
+                                  className="px-3 py-1 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors text-sm flex items-center"
+                                >
+                                  <CreditCard className="w-3 h-3 mr-1" />
+                                  Unbezahlt
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
     </div>
   );
 };
