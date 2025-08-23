@@ -47,7 +47,7 @@
     "@types/react-dom": "^18.2.7",
     "@typescript-eslint/eslint-plugin": "^8.35.0",
     "@typescript-eslint/parser": "^8.35.0",
-    "@vitejs/plugin-react": "^4.0.3",
+    "@vitejs/plugin-react": "^5.0.1",
     "@vitest/coverage-v8": "^3.2.4",
     "autoprefixer": "^10.4.14",
     "eslint": "^8.45.0",
@@ -57,7 +57,7 @@
     "postcss": "^8.4.27",
     "tailwindcss": "^3.3.0",
     "typescript": "^5.0.2",
-    "vite": "^4.4.5",
+    "vite": "^6.3.5",
     "vitest": "^3.2.4"
   },
   "description": "A modern, responsive website for a premium hookah bar in Germany featuring user authentication, menu display, live announcements, reviews, events tracking, and future integrations for table reservations and Spotify DJ features.",

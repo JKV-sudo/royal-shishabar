@@ -240,7 +240,7 @@ const BarOperations: React.FC<BarOperationsProps> = () => {
     if (!initialData || loadingInitial) return;
 
     let isSubscribed = true;
-    let debounceTimeout: NodeJS.Timeout | null = null;
+    let debounceTimeout: number | null = null;
 
     const unsubscribe = setupRealtimeListenerRef.current(
       (callback: (data: Order[]) => void) => {

@@ -7,7 +7,7 @@ import { CookieAuthService } from "../../services/cookieAuthService";
  */
 const SessionActivityTracker: React.FC = () => {
   const lastActivityRef = useRef<number>(Date.now());
-  const extendIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const extendIntervalRef = useRef<number | null>(null);
 
   useEffect(() => {
     // List of events that indicate user activity

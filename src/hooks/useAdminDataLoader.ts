@@ -62,7 +62,7 @@ export const useAdminDataLoader = <T>(
 
   const lastFetcherRef = useRef<(() => Promise<T>) | null>(null);
   const currentOperationRef = useRef<{ cancel: () => void } | null>(null);
-  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const retryTimeoutRef = useRef<number | null>(null);
 
   // Cleanup on unmount
   useEffect(() => {

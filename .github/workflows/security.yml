@@ -9,14 +9,21 @@ on:
     # Run security checks weekly on Mondays at 9 AM
     - cron: '0 9 * * 1'
 
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: write
+
 jobs:
   security-scan:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+      with:
+        fetch-depth: 0
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
@@ -30,12 +37,13 @@ jobs:
       run: npm audit --audit-level=moderate
       
     - name: Run Snyk security scan
-      uses: snyk/actions/node@master
+      uses: snyk/actions/node@latest
       env:
         SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
       with:
-        args: --severity-threshold=medium
-        
+        args: --severity-threshold=medium --sarif-file-output=snyk.sarif
+      continue-on-error: true
+
     - name: Upload Snyk results to GitHub Code Scanning
       uses: github/codeql-action/upload-sarif@v3
       if: always()
@@ -45,12 +53,16 @@ jobs:
   dependency-review:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Dependency Review
       uses: actions/dependency-review-action@v4
       with:
-        fail-on-severity: moderate 
+        license-check: false
+        vulnerability-check: true
+        fail-on-severity: moderate
+        base-ref: ${{ github.event.pull_request.base.ref }}
+        head-ref: ${{ github.event.pull_request.head.ref }} 

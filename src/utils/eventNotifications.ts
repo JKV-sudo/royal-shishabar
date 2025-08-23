@@ -3,7 +3,7 @@ import { PopupService } from '../services/popupService';
 
 class EventNotificationManager {
   private static instance: EventNotificationManager;
-  private notificationInterval: NodeJS.Timeout | null = null;
+  private notificationInterval: number | null = null;
   private lastNotificationTime: Date | null = null;
   private readonly NOTIFICATION_COOLDOWN = 30 * 60 * 1000; // 30 minutes
 
