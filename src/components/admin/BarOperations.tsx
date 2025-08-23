@@ -3,7 +3,6 @@ import {
   collection,
   query,
   where,
-  orderBy,
   onSnapshot,
   getDocs,
 } from "firebase/firestore";
@@ -44,7 +43,8 @@ interface BarOperationsProps {}
 const BarOperations: React.FC<BarOperationsProps> = () => {
   const [drinkOrders, setDrinkOrders] = useState<OrderWithItem[]>([]);
   const [shishaOrders, setShishaOrders] = useState<OrderWithItem[]>([]);
-  const [completingOrders, setCompletingOrders] = useState<Set<string>>(
+  // Track completion state - use orderID + menuItemId for unique identification
+  const [completingItems, setCompletingItems] = useState<Set<string>>(
     new Set()
   );
 
@@ -111,10 +111,29 @@ const BarOperations: React.FC<BarOperationsProps> = () => {
               shisha.push(orderWithMenuItem);
             }
           } else {
+            // FIXED: Create fallback item when menu item not found
             console.warn(
               "⚠️ Menu item not found for orderItem:",
-              orderItem.menuItemId
+              orderItem.menuItemId,
+              "Creating fallback item"
             );
+
+            const fallbackOrderWithItem: OrderWithItem = {
+              ...order,
+              currentItem: {
+                ...orderItem,
+                id: orderItem.menuItemId,
+                name: orderItem.name || `Item ${orderItem.menuItemId}`,
+                category: "drinks", // Default to drinks to ensure it shows up
+                price: orderItem.price,
+                description: "Menu item not found",
+                isAvailable: false,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              },
+            };
+
+            drinks.push(fallbackOrderWithItem);
           }
         });
       });
@@ -190,10 +209,10 @@ const BarOperations: React.FC<BarOperationsProps> = () => {
 
       // Load pending orders
       pendingOrders: async () => {
+        // FIXED: Remove orderBy to avoid composite index requirement
         const ordersQuery = query(
           collection(db, "orders"),
-          where("status", "in", ["pending", "confirmed", "preparing"]),
-          orderBy("createdAt", "asc")
+          where("status", "in", ["pending", "confirmed", "preparing"])
         );
 
         const snapshot = await getDocs(ordersQuery);
@@ -208,7 +227,10 @@ const BarOperations: React.FC<BarOperationsProps> = () => {
           } as Order;
         });
 
-        return orders;
+        // Sort in JavaScript instead of Firestore to avoid index requirement
+        return orders.sort(
+          (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
+        );
       },
     });
   }, []); // CRITICAL FIX: Empty dependency array - only run once on mount
@@ -222,10 +244,10 @@ const BarOperations: React.FC<BarOperationsProps> = () => {
 
     const unsubscribe = setupRealtimeListenerRef.current(
       (callback: (data: Order[]) => void) => {
+        // FIXED: Remove orderBy to avoid composite index requirement
         const ordersQuery = query(
           collection(db, "orders"),
-          where("status", "in", ["pending", "confirmed", "preparing"]),
-          orderBy("createdAt", "asc")
+          where("status", "in", ["pending", "confirmed", "preparing"])
         );
 
         return onSnapshot(
@@ -243,6 +265,11 @@ const BarOperations: React.FC<BarOperationsProps> = () => {
               } as Order;
             });
 
+            // Sort in JavaScript instead of Firestore to avoid index requirement
+            const sortedOrders = orders.sort(
+              (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
+            );
+
             // CRITICAL FIX: Debounce real-time updates to prevent aggressive processing
             if (debounceTimeout) {
               clearTimeout(debounceTimeout);
@@ -250,7 +277,7 @@ const BarOperations: React.FC<BarOperationsProps> = () => {
 
             debounceTimeout = setTimeout(() => {
               if (!isSubscribed) return;
-              callback(orders);
+              callback(sortedOrders);
             }, 300); // 300ms debounce
           },
           (error) => {
@@ -280,11 +307,17 @@ const BarOperations: React.FC<BarOperationsProps> = () => {
     };
   }, [initialData, loadingInitial]);
 
-  // CRITICAL FIX: Optimized order completion without full data reload
-  const handleCompleteItem = async (orderId: string) => {
-    if (completingOrders.has(orderId)) return;
+  // Helper function to generate unique item key
+  const getItemKey = (orderId: string, menuItemId: string) => {
+    return `${orderId}-${menuItemId}`;
+  };
 
-    setCompletingOrders((prev) => new Set(prev).add(orderId));
+  // CRITICAL FIX: Optimized order completion without full data reload
+  const handleCompleteItem = async (orderId: string, menuItemId: string) => {
+    const itemKey = getItemKey(orderId, menuItemId);
+    if (completingItems.has(itemKey)) return;
+
+    setCompletingItems((prev) => new Set(prev).add(itemKey));
 
     try {
       await OrderService.updateOrderStatus(orderId, "ready");
@@ -296,19 +329,20 @@ const BarOperations: React.FC<BarOperationsProps> = () => {
       console.error("❌ Error completing order:", error);
       toast.error("Fehler beim Abschließen der Bestellung");
     } finally {
-      setCompletingOrders((prev) => {
+      setCompletingItems((prev) => {
         const newSet = new Set(prev);
-        newSet.delete(orderId);
+        newSet.delete(itemKey);
         return newSet;
       });
     }
   };
 
   // CRITICAL FIX: Optimized preparation start without full data reload
-  const handleStartPreparing = async (orderId: string) => {
-    if (completingOrders.has(orderId)) return;
+  const handleStartPreparing = async (orderId: string, menuItemId: string) => {
+    const itemKey = getItemKey(orderId, menuItemId);
+    if (completingItems.has(itemKey)) return;
 
-    setCompletingOrders((prev) => new Set(prev).add(orderId));
+    setCompletingItems((prev) => new Set(prev).add(itemKey));
 
     try {
       await OrderService.updateOrderStatus(orderId, "preparing");
@@ -320,9 +354,9 @@ const BarOperations: React.FC<BarOperationsProps> = () => {
       console.error("❌ Error starting preparation:", error);
       toast.error("Fehler beim Starten der Zubereitung");
     } finally {
-      setCompletingOrders((prev) => {
+      setCompletingItems((prev) => {
         const newSet = new Set(prev);
-        newSet.delete(orderId);
+        newSet.delete(itemKey);
         return newSet;
       });
     }
@@ -401,7 +435,8 @@ const BarOperations: React.FC<BarOperationsProps> = () => {
   // Order card component
   const OrderCard = ({ order }: { order: OrderWithItem }) => {
     const priority = getOrderPriority(order.createdAt);
-    const isCompleting = completingOrders.has(order.id);
+    const itemKey = getItemKey(order.id, order.currentItem.menuItemId);
+    const isCompleting = completingItems.has(itemKey);
 
     return (
       <div
@@ -414,7 +449,7 @@ const BarOperations: React.FC<BarOperationsProps> = () => {
         <div className="flex justify-between items-start mb-3">
           <div className="flex items-center space-x-2">
             <Hash className="w-4 h-4" />
-            <span className="font-semibold">#{order.id}</span>
+            <span className="font-semibold">#{order.id.slice(-6)}</span>
             <span
               className={`px-2 py-1 rounded text-xs ${getStatusColor(
                 order.status
@@ -438,6 +473,11 @@ const BarOperations: React.FC<BarOperationsProps> = () => {
               <Flame className="w-5 h-5 text-orange-600" />
             )}
             <span className="font-medium">{order.currentItem.name}</span>
+            {order.currentItem.isAvailable === false && (
+              <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">
+                Menü-Item fehlt
+              </span>
+            )}
           </div>
           <p className="text-sm text-gray-600 ml-7">
             Menge: {order.currentItem.quantity}
@@ -447,12 +487,19 @@ const BarOperations: React.FC<BarOperationsProps> = () => {
               Notizen: {order.currentItem.specialInstructions}
             </p>
           )}
+          {order.currentItem.description === "Menu item not found" && (
+            <p className="text-sm text-orange-600 ml-7 mt-1 font-medium">
+              ⚠️ Menü-Item nicht gefunden (ID: {order.currentItem.id})
+            </p>
+          )}
         </div>
 
         <div className="flex space-x-2">
           {order.status === "pending" && (
             <button
-              onClick={() => handleStartPreparing(order.id)}
+              onClick={() =>
+                handleStartPreparing(order.id, order.currentItem.menuItemId)
+              }
               disabled={isCompleting}
               className="flex-1 bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -472,7 +519,9 @@ const BarOperations: React.FC<BarOperationsProps> = () => {
 
           {(order.status === "confirmed" || order.status === "preparing") && (
             <button
-              onClick={() => handleCompleteItem(order.id)}
+              onClick={() =>
+                handleCompleteItem(order.id, order.currentItem.menuItemId)
+              }
               disabled={isCompleting}
               className="flex-1 bg-green-600 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
